@@ -5,7 +5,7 @@
     <groupId>es.upm.fiware</groupId>
     <artifactId>rss</artifactId>
     <packaging>pom</packaging>
-    <name>RSS</name>
+    <name>Business-Ecosystem-RSS</name>
     <version>4.4.3</version>
     <description></description>
 
@@ -22,7 +22,6 @@
         
         <rss.version>4.4.3</rss.version>        
         <core.version>4.4.3</core.version>
-        <expenditureLimit.version>4.4.3</expenditureLimit.version>        
         
         <jdk.version>1.7</jdk.version>
         <maven.version>3.2.5</maven.version>
@@ -58,7 +57,6 @@
     <modules>
         <!--module>Modules that compose the whole bigger module are located here.</module -->               	 		
         <module>rss-core</module>       
-        <module>rss-expendLimit</module>   
         <module>fiware-rss</module>  
     </modules>
 
