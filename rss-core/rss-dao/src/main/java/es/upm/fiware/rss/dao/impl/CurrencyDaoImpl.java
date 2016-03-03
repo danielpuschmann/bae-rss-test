@@ -37,7 +37,7 @@ import es.upm.fiware.rss.model.BmCurrency;
  * 
  */
 @Repository
-public class CurrencyDaoImpl extends GenericDaoImpl<BmCurrency, Long> implements CurrencyDao {
+public class CurrencyDaoImpl extends GenericDaoImpl<BmCurrency, String> implements CurrencyDao {
 
     /**
      * Variable to print the trace.
@@ -58,41 +58,11 @@ public class CurrencyDaoImpl extends GenericDaoImpl<BmCurrency, Long> implements
     /*
      * (non-Javadoc)
      * 
-     * @see es.upm.greta.bmms.dao.CurrencyDao#getByIso4217Code(java.lang.String)
-     */
-    /*
-     * @Override public BmCurrency getByIso4217Code(final String iso4217Code) { String hql =
-     * "from BmCurrency c where c.txIso4217Code = '" + iso4217Code + "'"; List<BmCurrency> lpp =
-     * this.listCurrencyQuery(hql);
-     * 
-     * if (lpp.size() > 0) { return lpp.get(0); } else { return null; } }
-     */
-
-    /*
-     * (non-Javadoc)
-     * 
      * @see es.upm.greta.bmms.dao.CurrencyDao#getByIso4217StringCode(java.lang.String)
      */
     @Override
     public BmCurrency getByIso4217StringCode(String iso4217Code) {
         String hql = "from BmCurrency c where c.txIso4217Code ='" + iso4217Code + "'";
-        List<BmCurrency> lpp = this.listCurrencyQuery(hql);
-
-        if (lpp.size() > 0) {
-            return lpp.get(0);
-        } else {
-            return null;
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see es.upm.greta.bmms.dao.CurrencyDao#getByIso4217IntegerCode(int)
-     */
-    @Override
-    public BmCurrency getByIso4217IntegerCode(int iso4217Code) {
-        String hql = "from BmCurrency c where c.txIso4217CodeNum ='" + iso4217Code + "'";
         List<BmCurrency> lpp = this.listCurrencyQuery(hql);
 
         if (lpp.size() > 0) {

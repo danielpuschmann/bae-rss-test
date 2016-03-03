@@ -42,7 +42,7 @@ import javax.persistence.TemporalType;
 
 @Entity
 @Table(name = "sharing_report")
-public class SharingReport implements Serializable{
+public class SharingReport implements Serializable {
 
     // Composite id of the sharing report
     private int id;
