@@ -18,6 +18,7 @@
 package es.upm.fiware.rss.ws;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import javax.jws.WebMethod;
 import javax.jws.WebService;
@@ -25,6 +26,9 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.core.MediaType;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -33,9 +37,6 @@ import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.UserManager;
-import java.util.ArrayList;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.POST;
 
 /**
  *
@@ -52,7 +53,7 @@ public class AggregatorService {
     AggregatorManager aggregatorManager;
 
     @WebMethod
-    @Produces("application/json")
+    @Produces(MediaType.APPLICATION_JSON)
     @GET
     public Response getAggregators() throws Exception {
 
@@ -71,7 +72,7 @@ public class AggregatorService {
     }
 
     @WebMethod
-    @Consumes("application/json")
+    @Consumes(MediaType.APPLICATION_JSON)
     @POST
     public Response createAggregator(Aggregator aggregator) throws Exception {
         if (!this.userManager.isAdmin()) {

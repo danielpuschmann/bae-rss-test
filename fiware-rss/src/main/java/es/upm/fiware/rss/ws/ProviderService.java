@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -28,6 +28,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.MediaType;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -59,7 +60,7 @@ public class ProviderService {
      */
     @WebMethod
     @POST
-    @Consumes("application/json")
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response createProvider(RSSProvider providerInfo) throws Exception{
 
         RSUser user = userManager.getCurrentUser();
@@ -82,7 +83,7 @@ public class ProviderService {
 
     @WebMethod
     @GET
-    @Produces("application/json")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response getProviders(@QueryParam("aggregatorId") String aggregatorId)
             throws Exception{
 
