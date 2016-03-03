@@ -23,7 +23,7 @@
         <rss.version>4.4.3</rss.version>        
         <core.version>4.4.3</core.version>
         
-        <jdk.version>1.7</jdk.version>
+        <jdk.version>1.8</jdk.version>
         <maven.version>3.2.5</maven.version>
         <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
         <junit.version>4.12</junit.version>
