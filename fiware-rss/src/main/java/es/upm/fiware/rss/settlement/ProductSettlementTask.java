@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016 CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,7 +17,6 @@
 
 package es.upm.fiware.rss.settlement;
 
-import java.util.Properties;
 import java.util.List;
 
 import java.math.BigDecimal;
@@ -45,19 +44,24 @@ public class ProductSettlementTask implements Runnable {
 
     @Autowired
     private SettlementManager settlementManager;
-
+    
     @Autowired
-    private Properties rssProps;
+    private ThreadPoolManager poolManager;
+    
+    @Autowired
+    private AlgorithmFactory factory;
 
     private List<DbeTransaction> transactions;
     private RSSModel model;
+    private String callbackUrl;
 
     public ProductSettlementTask() {
     }
 
-    public ProductSettlementTask(RSSModel model, List<DbeTransaction> transactions) {
+    public ProductSettlementTask(RSSModel model, List<DbeTransaction> transactions, String callbackUrl) {
         this.model = model;
         this.transactions = transactions;
+        this.callbackUrl = callbackUrl;
     }
 
     @Override
@@ -77,13 +81,11 @@ public class ProductSettlementTask implements Runnable {
         }
 
         // Calculate RS
-        RSSModel sharingRes;
         try {
-            AlgorithmFactory factory = new AlgorithmFactory();
-            AlgorithmProcessor processor = factory.getAlgorithmProcessor(this.model.getAlgorithmType());
+            AlgorithmProcessor processor = this.factory.getAlgorithmProcessor(this.model.getAlgorithmType());
 
-            sharingRes = processor.calculateRevenue(model, value);
-            this.settlementManager.generateReport(sharingRes, curr);
+            this.settlementManager
+                    .generateReport(processor.calculateRevenue(model, value), curr);
 
         } catch (Exception e) {
             this.logger.info("Error processing transactions of: "
@@ -94,10 +96,13 @@ public class ProductSettlementTask implements Runnable {
 
             // Set transactions as pending
             this.settlementManager.setTxState(transactions, "pending", true);
+            this.poolManager.completeTask(this, callbackUrl, false);
             return;
         }
 
         // Set transactions as processed
         this.settlementManager.setTxState(transactions, "processed", true);
+        
+        this.poolManager.completeTask(this, callbackUrl, true);
     }
 }

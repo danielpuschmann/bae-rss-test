@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,153 +16,130 @@
  */
 package es.upm.fiware.rss.settlement;
 
+import es.upm.fiware.rss.algorithm.AlgorithmFactory;
+import es.upm.fiware.rss.algorithm.AlgorithmProcessor;
+import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.model.BmCurrency;
 import es.upm.fiware.rss.model.DbeTransaction;
 import es.upm.fiware.rss.model.RSSModel;
-import es.upm.fiware.rss.model.StakeholderModel;
 import es.upm.fiware.rss.service.SettlementManager;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Properties;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
-import static org.mockito.Matchers.anyString;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.isA;
 import org.mockito.MockitoAnnotations;
 
 /**
  *
- * @author jortiz
+ * @author fdelavega
  */
 public class ProductSettlementTaskTest {
 
     @Mock private SettlementManager settlementManager;
-    @Mock private Properties rssProps;
-    /*@Mock private List<DbeTransaction> transactions;
-    @Mock private RSSModel model;*/
+    @Mock private ThreadPoolManager poolManager;
+    @Mock private AlgorithmFactory algorithmFactory;
+
     @InjectMocks private ProductSettlementTask toTest;
 
-    public ProductSettlementTaskTest() {
-
-    }
+    private List<DbeTransaction> txs = new LinkedList<>();
+    private RSSModel model;
+    private String callback = "http://callback.com";
+    
+    private AlgorithmProcessor processor;
+    private RSSModel report = new RSSModel();
 
     @Before
-    public void setUp() {
+    public void setUp() throws RSSException {
+        // Build transactions
+        BmCurrency currency = new BmCurrency();
+        currency.setTxIso4217Code("EUR");
+
+        this.txs.add(this.buildTransaction(currency, new BigDecimal(10),
+                new BigDecimal(12), "C", 1, 1));
+        
+        this.txs.add(this.buildTransaction(currency, new BigDecimal(10),
+                new BigDecimal(12), "C", 2, 2));
+        
+        this.txs.add(this.buildTransaction(currency, new BigDecimal(10),
+                new BigDecimal(12), "R", 3, 3));
+        
+        // Build revenue sharing model
+        this.model = new RSSModel();
+        this.model.setAggregatorId("agregator@mail.com");
+        this.model.setAlgorithmType("FIXED_PERCENTAGE");
+        this.model.setOwnerProviderId("owner@mail.com");
+        this.model.setProductClass("productClass");
+        
+        this.toTest = new ProductSettlementTask(model, this.txs, this.callback);
         MockitoAnnotations.initMocks(this);
+        
+        // Mock AlgorithmProcessor
+        this.processor = mock(AlgorithmProcessor.class);
+        
+        when(this.algorithmFactory.getAlgorithmProcessor(eq("FIXED_PERCENTAGE")))
+                .thenReturn(processor);
     }
 
+    private DbeTransaction buildTransaction(BmCurrency currency, BigDecimal amount,
+            BigDecimal taxAmount, String type, Integer corrId, Integer txId) {
+        
+        DbeTransaction transaction = new DbeTransaction();
+        transaction.setBmCurrency(currency);
+        transaction.setFtChargedAmount(amount);
+        transaction.setFtChargedTaxAmount(taxAmount);
+        transaction.setTcTransactionType(type);
+        transaction.setTxPbCorrelationId(corrId);
+        transaction.setTxTransactionId(txId);
+        
+        return transaction;
+    }
+    /*
+     * Validates the run method of the product settlement task with correct 
+     * transactions
+     */
     @Test
-    public void productSettlementTaskConstructor() {
-        RSSModel model = new RSSModel();
-        List<DbeTransaction> transactions = new LinkedList<>();
+    public void testRunSettlementTask() throws IOException, RSSException {
+        // Mock processor behaviour
+        when(this.processor.calculateRevenue(isA(RSSModel.class), isA(BigDecimal.class)))
+                .thenReturn(this.report);
 
-        toTest = new ProductSettlementTask(model, transactions);
+        // Execute method
+        this.toTest.run();
+        
+        // Validate calls
+        verify(this.processor).calculateRevenue(eq(model), eq(new BigDecimal(10)));
+        verify(this.settlementManager).generateReport(eq(this.report), eq("EUR"));
+        verify(this.settlementManager).setTxState(eq(this.txs), eq("processed"), eq(Boolean.TRUE));
+        
+        verify(this.poolManager).completeTask(toTest, callback, true);
     }
 
+    /*
+     * Validates the run method of the product settlement task with an error
+     * in algorithm proccessing
+     */
     @Test
-    public void runTest() {
+    public void testRunSettlementTaskAlgException() throws IOException, RSSException {
+        // Mock processor behaviour
+        when(this.processor.calculateRevenue(isA(RSSModel.class), isA(BigDecimal.class)))
+                .thenThrow(new RSSException("Algorithm error"));
 
-        BmCurrency currency = mock(BmCurrency.class);
-
-        DbeTransaction transaction1 = new DbeTransaction();
-        transaction1.setBmCurrency(currency);
-        transaction1.setFtChargedAmount(BigDecimal.ZERO);
-        transaction1.setFtChargedTaxAmount(BigDecimal.TEN);
-        transaction1.setTcTransactionType("c");
-        transaction1.setTxPbCorrelationId(Integer.MIN_VALUE);
-        transaction1.setTxTransactionId(20);
-
-        DbeTransaction transaction2 = new DbeTransaction();
-        transaction2.setBmCurrency(currency);
-        transaction2.setFtChargedAmount(BigDecimal.ZERO);
-        transaction2.setFtChargedTaxAmount(BigDecimal.TEN);
-        transaction2.setTcTransactionType("a");
-        transaction2.setTxPbCorrelationId(Integer.MIN_VALUE);
-        transaction2.setTxTransactionId(20);
-
-        List <DbeTransaction> transactions = new LinkedList<>();
-        transactions.add(transaction1);
-        transactions.add(transaction2);
-
-        List <StakeholderModel> stakeholders = new LinkedList<>();
-        StakeholderModel stakeholderModel1 = new StakeholderModel();
-        stakeholderModel1.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel1.setStakeholderId("stakeholder1@mail.com");
-        StakeholderModel stakeholderModel2 = new StakeholderModel();
-        stakeholderModel2.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel2.setStakeholderId("stakeholder2@mail.com");
-        stakeholders.add(stakeholderModel1);
-        stakeholders.add(stakeholderModel2);
-
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("agregator@mail.com");
-        model.setAggregatorShare(BigDecimal.valueOf(30));
-        model.setAlgorithmType("FIXED_PERCENTAGE");
-        model.setOwnerProviderId("owner@mail.com");
-        model.setOwnerValue(BigDecimal.valueOf(30));
-        model.setProductClass("productClass");
-        model.setStakeholders(stakeholders);
-
-        toTest = new ProductSettlementTask(model, transactions);
-        MockitoAnnotations.initMocks(this);
-
-        toTest.run();
-    }
-
-    @Test
-    public void runRSSExceptionTest() {
-
-        BmCurrency currency = mock(BmCurrency.class);
-
-        DbeTransaction transaction1 = new DbeTransaction();
-        transaction1.setBmCurrency(currency);
-        transaction1.setFtChargedAmount(BigDecimal.ZERO);
-        transaction1.setFtChargedTaxAmount(BigDecimal.TEN);
-        transaction1.setTcTransactionType("c");
-        transaction1.setTxPbCorrelationId(Integer.MIN_VALUE);
-        transaction1.setTxTransactionId(20);
-
-        DbeTransaction transaction2 = new DbeTransaction();
-        transaction2.setBmCurrency(currency);
-        transaction2.setFtChargedAmount(BigDecimal.ZERO);
-        transaction2.setFtChargedTaxAmount(BigDecimal.TEN);
-        transaction2.setTcTransactionType("a");
-        transaction2.setTxPbCorrelationId(Integer.MIN_VALUE);
-        transaction2.setTxTransactionId(20);
-
-        List <DbeTransaction> transactions = new LinkedList<>();
-        transactions.add(transaction1);
-        transactions.add(transaction2);
-
-        List <StakeholderModel> stakeholders = new LinkedList<>();
-        StakeholderModel stakeholderModel1 = new StakeholderModel();
-        stakeholderModel1.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel1.setStakeholderId("stakeholder1@mail.com");
-        StakeholderModel stakeholderModel2 = new StakeholderModel();
-        stakeholderModel2.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel2.setStakeholderId("stakeholder2@mail.com");
-        stakeholders.add(stakeholderModel1);
-        stakeholders.add(stakeholderModel2);
-
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("agregator@mail.com");
-        model.setAggregatorShare(BigDecimal.valueOf(100));
-        model.setAlgorithmType("FIXED_PERCENTAGE");
-        model.setOwnerProviderId("owner@mail.com");
-        model.setOwnerValue(BigDecimal.valueOf(30));
-        model.setProductClass("productClass");
-        model.setStakeholders(stakeholders);
-
-        when(rssProps.get(anyString())).thenThrow(IOException.class);
-
-        toTest = new ProductSettlementTask(model, transactions);
-        MockitoAnnotations.initMocks(this);
-
-        toTest.run();
+        // Execute method
+        this.toTest.run();
+        
+        // Validate calls
+        verify(this.processor).calculateRevenue(eq(model), eq(new BigDecimal(10)));
+        verify(this.settlementManager).setTxState(eq(this.txs), eq("pending"), eq(Boolean.TRUE));
+        
+        verify(this.poolManager).completeTask(toTest, callback, false);
     }
 }

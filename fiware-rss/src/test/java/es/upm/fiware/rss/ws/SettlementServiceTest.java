@@ -47,7 +47,7 @@ public class SettlementServiceTest {
         MockitoAnnotations.initMocks(this);
     }
 
-    @Test
+    /*@Test
     public void launchSettlementTest() throws Exception {
         String aggregatorId = "aggregator@mail.com";
         String providerId = "provider@mail.com";
@@ -98,7 +98,5 @@ public class SettlementServiceTest {
         when(userManager.isAdmin()).thenReturn(false);
 
         Response response = toTest.launchSettlement(aggregatorId, providerId, productClass);
-    }
-
-
+    }*/
 }

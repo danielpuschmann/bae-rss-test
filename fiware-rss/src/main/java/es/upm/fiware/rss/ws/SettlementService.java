@@ -16,22 +16,30 @@
  */
 package es.upm.fiware.rss.ws;
 
-import es.upm.fiware.rss.exception.RSSException;
-import es.upm.fiware.rss.exception.UNICAExceptionType;
-import es.upm.fiware.rss.model.RSSReport;
-import es.upm.fiware.rss.model.RSUser;
-import es.upm.fiware.rss.service.SettlementManager;
-import es.upm.fiware.rss.service.UserManager;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
+
 import javax.jws.WebMethod;
 import javax.jws.WebService;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.MediaType;
+
 import org.springframework.beans.factory.annotation.Autowired;
+
+import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.RSSReport;
+import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.model.SettlementJob;
+import es.upm.fiware.rss.service.SettlementManager;
+import es.upm.fiware.rss.service.UserManager;
 
 /**
  *
@@ -47,25 +55,39 @@ public class SettlementService {
     @Autowired
     UserManager userManager;
 
+    private boolean isValidURL(String urlStr) {
+        boolean res = true;
+        try {
+            new URL(urlStr);
+        }
+        catch (MalformedURLException e) {
+            res = false;
+        }
+        return res;
+    }
+
     @WebMethod
-    @GET
-    public Response launchSettlement(
-            @QueryParam("aggregatorId") String aggregatorId,
-            @QueryParam("providerId") String providerId,
-            @QueryParam("productClass") String productClass)
-            throws Exception {
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response launchSettlement(SettlementJob task) throws Exception {
 
         // Check basic permissions
         RSUser user = this.userManager.getCurrentUser();
         if (!this.userManager.isAdmin() &&
-                (aggregatorId == null || !user.getEmail().equalsIgnoreCase(aggregatorId))) {
+                (task.getAggregatorId() == null || !user.getEmail().equalsIgnoreCase(task.getAggregatorId()))) {
 
             String[] args = {"You are not allowed to launch the settlement process for the given parameters"};
             throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
         }
 
+        // Validate task URL
+        if(!this.isValidURL(task.getCallbackUrl())) {
+            String[] args = {"Invalid callbackUrl"};
+            throw new RSSException(UNICAExceptionType.CONTENT_NOT_WELL_FORMED, args);
+        }
+        
         // Launch process
-        settlementManager.runSettlement(aggregatorId, providerId, productClass);
+        settlementManager.runSettlement(task);
         Response.ResponseBuilder rb = Response.status(Response.Status.ACCEPTED.getStatusCode());
         return rb.build();
     }

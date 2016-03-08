@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 - 2016 CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -14,18 +14,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 package es.upm.fiware.rss.settlement;
-
-import es.upm.fiware.rss.model.DbeTransaction;
-import es.upm.fiware.rss.model.RSSModel;
-import java.util.List;
-
 
 /**
  *
  * @author fdelavega
  */
-public abstract class SettlementTaskFactory {
-    public abstract ProductSettlementTask getSettlementTask(RSSModel model, List<DbeTransaction> transactions, String callbackUrl);
+public enum TaskPoolState {
+    LOADING, PENDING, COMPLETED, FAILED, PARTIAL;
 }

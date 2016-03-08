@@ -3,7 +3,7 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  *
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -50,6 +50,7 @@ import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSSReport;
 import es.upm.fiware.rss.model.ReportProvider;
 import es.upm.fiware.rss.model.ReportProviderId;
+import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.model.SharingReport;
 import es.upm.fiware.rss.model.StakeholderModel;
 import es.upm.fiware.rss.settlement.ProductSettlementTask;
@@ -117,12 +118,13 @@ public class SettlementManager {
             String providerId) throws RSSException {
 
         List<RSSProvider> providers;
-        if (providerId != null && !providerId.isEmpty()) {
+        if (providerId == null || providerId.isEmpty()) {
+            providers = this.providerManager.getAPIProviders(aggregatorId);
+        } else {
             providers = new ArrayList<>();
             providers.add(this.providerManager.getProvider(aggregatorId, providerId));
-        } else {
-            providers = this.providerManager.getAPIProviders(aggregatorId);
         }
+
         return providers;
     }
 
@@ -135,44 +137,41 @@ public class SettlementManager {
     /**
      * Launch settlement process.
      * 
-     * @param aggregatorId
-     * @param providerId
-     * @param productClass
+     * @param job
      * @throws RSSException
      */
-    public void runSettlement(String aggregatorId,
-            String providerId, String productClass) throws RSSException {
+    public void runSettlement(SettlementJob job) throws RSSException {
 
         // Validate fields
-        if (aggregatorId != null && !aggregatorId.isEmpty()) {
-            if (providerId != null && !providerId.isEmpty()) {
+        if (job.getAggregatorId() != null && !job.getAggregatorId().isEmpty()) {
+            if (job.getProviderId() != null && !job.getProviderId().isEmpty()) {
 
                 // Check that the given provider belongs to the aggregator
-                this.modelsManager.checkValidAppProvider(aggregatorId, providerId);
+                this.modelsManager.checkValidAppProvider(job.getAggregatorId(), job.getProviderId());
 
                 // Check that the provider has a RS model
                 // for the specified product class
-                if (productClass != null && !productClass.isEmpty()
-                        && !this.modelsManager.existModel(aggregatorId, providerId, productClass)) {
+                if (job.getProductClass() != null && !job.getProductClass().isEmpty()
+                        && !this.modelsManager.existModel(job.getAggregatorId(), job.getProviderId(), job.getProductClass())) {
 
-                    String[] args = {productClass};
+                    String[] args = {job.getProductClass()};
                     throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
                 }
             }
         }
 
         // Launch settlement for the given transactions
-        for (Aggregator ag: this.getAggregators(aggregatorId)) {
-            List<RSSProvider> providers = this.getProviders(ag.getAggregatorId(), providerId);
+        for (Aggregator ag: this.getAggregators(job.getAggregatorId())) {
+            List<RSSProvider> providers = this.getProviders(ag.getAggregatorId(), job.getProviderId());
 
             for(RSSProvider pv: providers) {
                 List<RSSModel> models =
-                        this.getModels(ag.getAggregatorId(), pv.getProviderId(), productClass);
+                        this.getModels(ag.getAggregatorId(), pv.getProviderId(), job.getProductClass());
 
                 for (RSSModel m: models) {
                     // Get related transactions
                     List<DbeTransaction> txs = this.transactionDao.
-                            getTransactions(ag.getAggregatorId(), pv.getProviderId(), m.getProductClass());
+                            getTransactions(m.getAggregatorId(), m.getOwnerProviderId(), m.getProductClass());
 
                     // Set transactions as processing
                     if (txs != null && !txs.isEmpty()) {
@@ -180,13 +179,14 @@ public class SettlementManager {
 
                         // Create processing task
                         ProductSettlementTask settlementTask
-                                = this.taskFactory.getSettlementTask(m, txs);
+                                = this.taskFactory.getSettlementTask(m, txs, job.getCallbackUrl());
 
-                        poolManager.getExecutorService().submit(settlementTask);
+                        poolManager.submitTask(settlementTask, job.getCallbackUrl());
                     }
                 }
             }
         }
+        poolManager.closeTaskPool(job.getCallbackUrl());
     }
 
     /**

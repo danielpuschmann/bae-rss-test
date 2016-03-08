@@ -18,15 +18,24 @@
 package es.upm.fiware.rss.settlement;
 
 import es.upm.fiware.rss.settlement.ThreadPoolManager;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.eq;
 
 /**
  *
@@ -35,7 +44,12 @@ import org.mockito.MockitoAnnotations;
 public class ThreadPoolManagerTest {
 
     @Mock private ExecutorService executorService;
+    @Mock private Map<String, TaskPool> tasks;
+
     @InjectMocks private ThreadPoolManager toTest;
+    
+    private TaskPool pool;
+    private final String callbackUrl = "http://callbackurl.com";
 
     public ThreadPoolManagerTest() {
     }
@@ -43,12 +57,66 @@ public class ThreadPoolManagerTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        
+        this.pool = mock(TaskPool.class);
+
+        when(this.tasks.get(eq(this.callbackUrl))).thenReturn(this.pool);
+    }
+
+    private void verifySubmited(ProductSettlementTask task) {
+        verify(this.pool).addTask(task);
+        verify(this.executorService).submit(task);
     }
 
     @Test
-    public void test() {
-        toTest.cleanUp();
-        toTest.getExecutorService();
-        toTest.init();
+    public void submitFirstTask() {
+        // No task for the specified callback url has been submited yet
+        when(this.tasks.containsKey(eq(this.callbackUrl))).thenReturn(false);
+        
+        // Call method
+        ProductSettlementTask task = new ProductSettlementTask();
+        this.toTest.submitTask(task, callbackUrl);
+        
+        // Verify calls
+        ArgumentCaptor<TaskPool> captor = ArgumentCaptor.forClass(TaskPool.class);
+        verify(this.tasks).put(eq(this.callbackUrl), captor.capture());
+        
+        Assert.assertEquals(this.callbackUrl, captor.getValue().getCallbackUrl());
+     
+        this.verifySubmited(task);
+    }
+    
+    @Test
+    public void submitTaskExistingPool() {
+        // There is already an existing pool
+        when(this.tasks.containsKey(eq(this.callbackUrl))).thenReturn(true);
+        
+        // Call method
+        ProductSettlementTask task = new ProductSettlementTask();
+        this.toTest.submitTask(task, callbackUrl);
+        
+        this.verifySubmited(task);
+    }
+
+    @Test
+    public void completeTaskPoolFinished() {
+        
+    }
+    
+    @Test
+    public void completeTaskPoolNotFinished() {
+        when(this.pool.isFinished()).thenReturn(false);
+        
+        ProductSettlementTask task = new ProductSettlementTask();
+        this.toTest.completeTask(task, this.callbackUrl, true);
+        
+        verify(this.pool).completeTask(task, true);
+    }
+    
+    @Test
+    public void closePool() {
+        this.toTest.closeTaskPool(this.callbackUrl);
+        
+        verify(this.pool).close();
     }
 }
