@@ -13,11 +13,8 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
 
     <http auto-config="true" entry-point-ref="fiwareEntryPoint" use-expressions="true" disable-url-rewriting="true">
         <custom-filter before="CAS_FILTER" ref="apiHeaderFilter" />
-        <custom-filter after="CAS_FILTER" ref="clientFilter" />
 
         <!-- Callback URL must be unsecured -->
-        <intercept-url pattern="/callback" access="hasRole('ROLE_ANONYMOUS') or hasRole('ROLE_USER')"/>
-        <logout logout-url="/logout" logout-success-url="${config.baseUrl}${config.logoutPath}" delete-cookies="JSESSIONID" invalidate-session="true" />
         <intercept-url pattern="/**" access="hasRole('USER')" />
         <csrf disabled="true"/>
     </http>
@@ -48,13 +45,6 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
         <beans:constructor-arg value="/rss/" index="0" />
         <beans:constructor-arg value="Authorization" index="1"/>
         <beans:property name="client" ref="fiwareClient" />
-        <beans:property name="authenticationManager" ref="authenticationManager" />
-    </beans:bean>
-
-    <beans:bean id="clientFilter" class="org.pac4j.springframework.security.web.ClientAuthenticationFilter">
-        <beans:constructor-arg value="${config.callbackPath}" />
-        <beans:property name="clients" ref="clients" />
-        <beans:property name="sessionAuthenticationStrategy" ref="sas" />
         <beans:property name="authenticationManager" ref="authenticationManager" />
     </beans:bean>
 

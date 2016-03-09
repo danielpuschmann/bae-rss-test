@@ -35,16 +35,14 @@ package es.upm.fiware.rss.oauth.service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.pac4j.core.profile.UserProfile;
 import org.pac4j.oauth.credentials.OAuthCredentials;
 import org.pac4j.springframework.security.authentication.ClientAuthenticationToken;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -66,22 +64,27 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  */
 public class FIWAREHeaderAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
 
-    private String headerName;
-    private FIWAREClient client;
-
-    private static final Pattern AUTHORIZATION_PATTERN
-            = Pattern.compile("^bearer ([^\\s]+)$", Pattern.CASE_INSENSITIVE);
+    private String userHeader;
+    private String rolesHeader;
+    private String emailHeader;
+    private final String clientName = "businessEcosystem";
+    
+    @Autowired
+    private AuthUserManager userManager;
 
     protected FIWAREHeaderAuthenticationFilter() {
-        this("/rss/", "Authorization");
+        this("/rss/", "X-Actor-ID", "X-Roles", "X-Email");
     }
 
-    protected FIWAREHeaderAuthenticationFilter(String baseUrl, String headerName) {
+    protected FIWAREHeaderAuthenticationFilter(String baseUrl, String userHeader,
+            String rolesHeader, String emailHeader) {
         // Super class constructor must be called. 
-        super(new FIWAREHeaderAuthenticationRequestMatcher(baseUrl, headerName));
+        super(new FIWAREHeaderAuthenticationRequestMatcher(baseUrl, userHeader, rolesHeader, emailHeader));
 
         // Store header name
-        this.headerName = headerName;
+        this.userHeader = userHeader;
+        this.rolesHeader = rolesHeader;
+        this.emailHeader = emailHeader;
 
         // Needed to continue with the process of the request
         setContinueChainBeforeSuccessfulAuthentication(true);
@@ -93,35 +96,49 @@ public class FIWAREHeaderAuthenticationFilter extends AbstractAuthenticationProc
         setAuthenticationSuccessHandler(new FIWAREHeaderAuthenticationSuccessHandler());
     }
 
+    private FIWAREProfile extractUserProfile(String id, String roles, String email) {
+        // Build new FIWARE User profile
+        FIWAREProfile profile = new FIWAREProfile();
+        profile.setId(id);
+        profile.addAttribute("email", email);
+        profile.addAttribute("roles", userManager.buildUserRoles(roles, email));
+
+        profile.addRole("ROLE_USER");
+
+        // User information should be stored in the local users table
+        userManager.updateUser(profile);
+
+        return profile;
+    }
+
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request,
             HttpServletResponse response) throws AuthenticationException,
             IOException, ServletException {
 
         Authentication auth = null;
-        String authHeader = request.getHeader(headerName);
-        Matcher matcher = AUTHORIZATION_PATTERN.matcher(authHeader);
+        String actorId = request.getHeader(this.userHeader);
+        String roles = request.getHeader(this.rolesHeader);
+        String email = request.getHeader(this.emailHeader);
 
         try {
-
             // We only have one possible match
-            if (matcher.find()) {
-                String authToken = matcher.group(1);
+            if (actorId != null && !actorId.isEmpty() && roles != null && !roles.isEmpty()) {
 
                 // This method can return an exception when the Token is invalid
                 // In this case, the exception is caught and the correct exceptions is thrown...
-                UserProfile profile = client.getUserProfile(authToken);
+                FIWAREProfile profile = this.extractUserProfile(actorId, roles, email);
 
                 // Define authorities
                 Collection<GrantedAuthority> authorities = new ArrayList<>();
 
-                for (String role : profile.getRoles()) {
+                profile.getRoles().stream().forEach((role) -> {
                     authorities.add(new SimpleGrantedAuthority(role));
-                }
+                });
 
                 // new token with credentials (like previously) and user profile and authorities
-                OAuthCredentials credentials = new OAuthCredentials(null, authToken, "", client.getName());
-                auth = new ClientAuthenticationToken(credentials, client.getName(), profile, authorities);
+                OAuthCredentials credentials = new OAuthCredentials(null, actorId, "", this.clientName);
+                auth = new ClientAuthenticationToken(credentials, this.clientName, profile, authorities);
             } else {
                 // This is not supposed to happen
                 throw new IllegalStateException("Pattern is suppossed to match.");
@@ -133,14 +150,6 @@ public class FIWAREHeaderAuthenticationFilter extends AbstractAuthenticationProc
         }
 
         return auth;
-    }
-
-    public FIWAREClient getClient() {
-        return this.client;
-    }
-
-    public void setClient(FIWAREClient client) {
-        this.client = client;
     }
 
 	// AUXILIAR CLASSES //
@@ -155,18 +164,26 @@ public class FIWAREHeaderAuthenticationFilter extends AbstractAuthenticationProc
      */
     static class FIWAREHeaderAuthenticationRequestMatcher implements RequestMatcher {
 
-        private String baseUrl;
-        private String headerName;
+        private final String baseUrl;
+        private final String userHeader;
+        private final String rolesHeader;
+        private final String emailHeader;
 
-        public FIWAREHeaderAuthenticationRequestMatcher(String baseUrl, String headerName) {
+        public FIWAREHeaderAuthenticationRequestMatcher(String baseUrl, String userHeader,
+                String rolesHeader, String emailHeader) {
+            
             this.baseUrl = baseUrl;
-            this.headerName = headerName;
+            this.userHeader = userHeader;
+            this.rolesHeader = rolesHeader;
+            this.emailHeader = emailHeader;
         }
 
         @Override
         public boolean matches(HttpServletRequest request) {
 
-            String authHeader = request.getHeader(headerName);
+            String actorId = request.getHeader(this.userHeader);
+            String roles = request.getHeader(this.rolesHeader);
+            String email = request.getHeader(this.emailHeader);
 
             // Get path
             String url = request.getServletPath();
@@ -186,8 +203,8 @@ public class FIWAREHeaderAuthenticationFilter extends AbstractAuthenticationProc
                 url = sb.toString();
             }
 
-            return url.startsWith(baseUrl) && authHeader != null
-                    && AUTHORIZATION_PATTERN.matcher(authHeader).matches();
+            return url.startsWith(baseUrl) && actorId != null && !actorId.isEmpty()
+                    && roles != null && !roles.isEmpty() && email != null && !email.isEmpty();
         }
     }
 
