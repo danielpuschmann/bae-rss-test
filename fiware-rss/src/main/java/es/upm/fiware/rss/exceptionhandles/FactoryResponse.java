@@ -19,8 +19,6 @@
 
 package es.upm.fiware.rss.exceptionhandles;
 
-import java.util.Properties;
-
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 

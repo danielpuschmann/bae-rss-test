@@ -10,7 +10,9 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
     <authentication-manager alias="authenticationManager">
     </authentication-manager>
 
-    <http auto-config="true" use-expressions="true" disable-url-rewriting="true">
+    <http auto-config="true" entry-point-ref="authEntryPoint"
+          use-expressions="true" disable-url-rewriting="true">
+        
         <custom-filter before="CAS_FILTER" ref="apiHeaderFilter" />
 
         <!-- Callback URL must be unsecured -->
@@ -25,6 +27,9 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
         <beans:constructor-arg value="X-Roles" index="2"/>
         <beans:constructor-arg value="X-Email" index="3"/>
         <beans:property name="authenticationManager" ref="authenticationManager" />
+    </beans:bean>
+
+    <beans:bean id="authEntryPoint" class="es.upm.fiware.rss.oauth.service.RESTAwareLoginUrlAuthenticationEntryPoint">
     </beans:bean>
 
     <beans:bean id="httpSessionRequestCache"
