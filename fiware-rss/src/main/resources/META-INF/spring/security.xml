@@ -8,10 +8,9 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
 		   http://www.springframework.org/schema/security/spring-security.xsd">
 
     <authentication-manager alias="authenticationManager">
-        <authentication-provider ref="clientProvider" />
     </authentication-manager>
 
-    <http auto-config="true" entry-point-ref="fiwareEntryPoint" use-expressions="true" disable-url-rewriting="true">
+    <http auto-config="true" use-expressions="true" disable-url-rewriting="true">
         <custom-filter before="CAS_FILTER" ref="apiHeaderFilter" />
 
         <!-- Callback URL must be unsecured -->
@@ -19,38 +18,13 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
         <csrf disabled="true"/>
     </http>
 
-    <!-- entry points -->
-    <beans:bean id="fiwareEntryPoint" class="org.pac4j.springframework.security.web.ClientAuthenticationEntryPoint">
-        <beans:property name="client" ref="fiwareClient" />
-    </beans:bean>
-
-    <!-- clients definition -->
-    <beans:bean id="fiwareClient" class="es.upm.fiware.rss.oauth.service.FIWAREClient">
-        <beans:property name="serverURL" value="${config.baseUrl}" />
-        <beans:property name="key" value="${config.client_id}" />
-        <beans:property name="secret" value="${config.client_secret}"/>
-    </beans:bean>
-
-    <beans:bean id="clients" class="org.pac4j.core.client.Clients">
-        <beans:property name="callbackUrl" value="${config.callbackURL}" />
-        <beans:property name="clients">
-            <beans:list>
-                <beans:ref bean="fiwareClient" />
-            </beans:list>
-        </beans:property>
-    </beans:bean>
-
      <!-- common to all clients -->
      <beans:bean id="apiHeaderFilter" class="es.upm.fiware.rss.oauth.service.FIWAREHeaderAuthenticationFilter">
         <beans:constructor-arg value="/rss/" index="0" />
-        <beans:constructor-arg value="Authorization" index="1"/>
-        <beans:property name="client" ref="fiwareClient" />
+        <beans:constructor-arg value="X-Actor-ID" index="1"/>
+        <beans:constructor-arg value="X-Roles" index="2"/>
+        <beans:constructor-arg value="X-Email" index="3"/>
         <beans:property name="authenticationManager" ref="authenticationManager" />
-    </beans:bean>
-
-    <beans:bean id="clientProvider"
-          class="org.pac4j.springframework.security.authentication.ClientAuthenticationProvider">
-        <beans:property name="clients" ref="clients" />
     </beans:bean>
 
     <beans:bean id="httpSessionRequestCache"
