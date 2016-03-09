@@ -183,7 +183,14 @@ public class ProviderManagerTest {
         DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
 
         when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-        doThrow(org.hibernate.NonUniqueObjectException.class).when(appProviderDao).create(isA(DbeAppProvider.class));
+        DbeAppProviderId id = new DbeAppProviderId();
+        id.setAggregator(aggregator);
+        id.setTxAppProviderId(providerId);
+
+        DbeAppProvider prevProvider = new DbeAppProvider();
+        prevProvider.setId(id);
+
+        when(appProviderDao.getProvider(aggregatorId, providerId)).thenReturn(prevProvider);
 
         toTest.createProvider(providerId, providerName, aggregatorId);
     }

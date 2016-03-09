@@ -167,6 +167,19 @@ public class ProviderManager {
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
         }
 
+        boolean provExists = true;
+
+        try {
+            this.getProvider(aggregatorId, providerId);
+        } catch (RSSException e){
+            provExists = false;
+        }
+
+        if (provExists) {
+            String[] args = {"The provider " + providerId + " of the aggregator " + aggregatorId + " already exists"};
+            throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
+        }
+
         // Build provider ID
         DbeAppProviderId id = new DbeAppProviderId();
         id.setTxAppProviderId(providerId);
@@ -180,11 +193,6 @@ public class ProviderManager {
         provider.setTxTimeStamp(new Date());
 
         // Create provider
-        try {
-            appProviderDao.create(provider);
-        } catch (org.hibernate.NonUniqueObjectException e) {
-            String[] args = {"The given provider already exists"};
-            throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
-        }
+        appProviderDao.create(provider);
     }
 }
