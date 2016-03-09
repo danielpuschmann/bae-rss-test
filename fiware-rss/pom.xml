@@ -9,9 +9,9 @@
     </parent>
 
     <groupId>es.upm.fiware.rss</groupId>
-    <artifactId>fiware-rss</artifactId>
+    <artifactId>DSRevenueSharing</artifactId>
     <packaging>war</packaging>
-    <name>fiware-rss</name>
+    <name>DSRevenueSharing</name>
     <description>FIWARE RSS</description>
 
     <organization>
@@ -24,6 +24,11 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>19.0</version>
+        </dependency>
         <dependency>
             <groupId>es.upm.fiware.rss.core</groupId>
             <artifactId>rss-common</artifactId>
@@ -43,16 +48,28 @@
             <groupId>es.upm.fiware.rss.core</groupId>
             <artifactId>rss-oauth</artifactId>
             <version>${core.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
             <version>${httpclient.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
-            <version>${commons-codec.version}</version>
+            <version>1.8</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -229,11 +246,23 @@
 	    <groupId>org.glassfish.jersey.containers</groupId>
 	    <artifactId>jersey-container-servlet</artifactId>
 	    <version>2.5.1</version>
+	    <exclusions>
+	        <exclusion>
+	            <groupId>com.google.guava</groupId>
+	            <artifactId>guava</artifactId>
+	        </exclusion>
+	    </exclusions>
 	</dependency>
 	<dependency>
 	    <groupId>org.glassfish.jersey.core</groupId>
 	    <artifactId>jersey-client</artifactId>
 	    <version>2.5.1</version>
+	    <exclusions>
+	        <exclusion>
+	            <groupId>com.google.guava</groupId>
+	            <artifactId>guava</artifactId>
+	        </exclusion>
+	    </exclusions>
 	</dependency>
 	<dependency>
 	    <groupId>org.glassfish.jersey.media</groupId>
@@ -243,7 +272,7 @@
     </dependencies>
 
     <build>
-        <finalName>fiware-rss</finalName>
+        <finalName>DSRevenueSharing</finalName>
         <plugins>
             <plugin>
                 <inherited>true</inherited>

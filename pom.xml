@@ -61,7 +61,7 @@
     </modules>
 
     <build>
-        <finalName>${project.name}-${project.version}</finalName>
+        <finalName>DSRevenueSharing</finalName>
 
         <resources>
             <resource>
