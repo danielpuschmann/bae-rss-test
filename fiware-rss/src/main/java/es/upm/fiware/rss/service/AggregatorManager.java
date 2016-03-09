@@ -89,6 +89,19 @@ public class AggregatorManager {
             throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
 
+        // Check that the aggregator does not exists
+        boolean aggExists = true;
+        try {
+            this.getAggregator(aggregator.getAggregatorId());
+        } catch (RSSException e) {
+            aggExists = false;
+        }
+
+        if (aggExists) {
+            String[] args = {"The Aggregator " + aggregator.getAggregatorId() + " already exists"};
+            throw  new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
+        }
+
         // Build new aggregator object
         DbeAggregator dbAggregator = new DbeAggregator();
         dbAggregator.setTxEmail(aggregator.getAggregatorId());
