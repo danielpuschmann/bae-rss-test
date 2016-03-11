@@ -167,15 +167,9 @@ public class ProviderManager {
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
         }
 
-        boolean provExists = true;
+        DbeAppProvider provModel = this.appProviderDao.getProvider(aggregatorId, providerId);
 
-        try {
-            this.getProvider(aggregatorId, providerId);
-        } catch (RSSException e){
-            provExists = false;
-        }
-
-        if (provExists) {
+        if (provModel != null) {
             String[] args = {"The provider " + providerId + " of the aggregator " + aggregatorId + " already exists"};
             throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
         }

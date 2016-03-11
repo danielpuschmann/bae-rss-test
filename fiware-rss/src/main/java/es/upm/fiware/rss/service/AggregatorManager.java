@@ -126,6 +126,15 @@ public class AggregatorManager {
         this.aggregatorDao.create(dbAggregator);
     }
 
+    public Aggregator buildAPIAggregator(DbeAggregator ag) {
+        Aggregator aggregator = new Aggregator();
+        aggregator.setAggregatorId(ag.getTxEmail());
+        aggregator.setAggregatorName(ag.getTxName());
+        aggregator.setDefaultAggregator(ag.isDefaultAggregator());
+
+        return aggregator;
+    }
+
     /**
      * Get existing aggregators from the DB in a format ready to be serialized
      * @return, A list of Aggregator instances with the information of the
@@ -137,11 +146,7 @@ public class AggregatorManager {
         List<DbeAggregator> aggregators = this.getAggregators();
 
         aggregators.stream().map((aggregator) -> {
-            Aggregator apiAggregator = new Aggregator();
-            apiAggregator.setAggregatorId(aggregator.getTxEmail());
-            apiAggregator.setAggregatorName(aggregator.getTxName());
-            apiAggregator.setDefaultAggregator(aggregator.isDefaultAggregator());
-            return apiAggregator;
+            return this.buildAPIAggregator(aggregator);
         }).forEach((apiAggregator) -> {
             apiAggregators.add(apiAggregator);
         });
@@ -163,12 +168,17 @@ public class AggregatorManager {
             String[] args = {aggregatorId};
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
         }
+        return this.buildAPIAggregator(ag);
+    }
 
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId(aggregatorId);
-        aggregator.setAggregatorName(ag.getTxName());
-        aggregator.setDefaultAggregator(ag.isDefaultAggregator());
+    public Aggregator getDefaultAggregator () throws RSSException {
+        DbeAggregator aggregator = this.aggregatorDao.getDefaultAggregator();
 
-        return aggregator;
+        if (aggregator == null) {
+            String[] args = {"There is not any aggregator registered"};
+            throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
+        }
+
+        return this.buildAPIAggregator(aggregator);
     }
 }

@@ -36,6 +36,7 @@ import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
 
@@ -52,6 +53,10 @@ public class ProviderService {
 
     @Autowired
     UserManager userManager;
+
+    @Autowired
+    AggregatorManager aggregatorManager;
+
     /**
      * 
      * @param providerInfo
@@ -65,12 +70,23 @@ public class ProviderService {
 
         RSUser user = userManager.getCurrentUser();
 
+        // Get the effective aggregator
+        if (providerInfo.getAggregatorId() == null
+                || providerInfo.getAggregatorId().isEmpty()) {
+            // If the aggregator id has not been provided the provider is created
+            // in the default aggregator
+            providerInfo.setAggregatorId(aggregatorManager
+                    .getDefaultAggregator()
+                    .getAggregatorId());
+        }
+
         // Check if the user can create a provider for the given aggregator
         if (!providerInfo.getAggregatorId().equals(user.getEmail())
                 && !userManager.isAdmin()) {
             String[] args = {"You are not allowed to create a provider for the given aggregatorId"};
             throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
         }
+
         // Create a new provider for the store represented by the User (AggregatorID)
         providerManager.createProvider(
             providerInfo.getProviderId(),
