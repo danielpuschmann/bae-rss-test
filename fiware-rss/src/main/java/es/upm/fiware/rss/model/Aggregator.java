@@ -24,6 +24,7 @@ package es.upm.fiware.rss.model;
 public class Aggregator {
     private String aggregatorName;
     private String aggregatorId;
+    private boolean defaultAggregator;
 
     public String getAggregatorName() {
         return aggregatorName;
@@ -41,5 +42,11 @@ public class Aggregator {
         this.aggregatorId = aggregatorId;
     }
 
-    
+    public boolean isDefaultAggregator() {
+        return defaultAggregator;
+    }
+
+    public void setDefaultAggregator(boolean defaultAggregator) {
+        this.defaultAggregator = defaultAggregator;
+    }
 }

@@ -17,21 +17,25 @@
 package es.upm.fiware.rss.service;
 
 import es.upm.fiware.rss.dao.DbeAggregatorDao;
+import es.upm.fiware.rss.exception.InterfaceExceptionType;
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.DbeAggregator;
+import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.NonUniqueObjectException;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import static org.mockito.Matchers.*;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 
 import org.slf4j.Logger;
@@ -47,6 +51,7 @@ public class AggregatorManagerTest {
     @Mock private DbeAggregatorDao dbeAggregatorDaoMock;
     @InjectMocks private AggregatorManager toTest;
 
+    private Aggregator aggregator;
 
     public AggregatorManagerTest() {
     }
@@ -54,77 +59,137 @@ public class AggregatorManagerTest {
     @Before
     public void setUp() throws Exception {
 	MockitoAnnotations.initMocks(this);
+        
+        this.aggregator = new Aggregator();
+        this.aggregator.setAggregatorId("aggregator@id.com");
+        this.aggregator.setAggregatorName("aggregatorName");
+        this.aggregator.setDefaultAggregator(false);
+
+        DbeAggregator prevAggregator = new DbeAggregator();
+        prevAggregator.setTxEmail("prev@mail.com");
+        prevAggregator.setTxName("prevAggregator");
+        prevAggregator.setDefaultAggregator(false);
+
+        List<DbeAggregator> aggregators = new ArrayList<>();
+
+        aggregators.add(prevAggregator);
+        when(this.dbeAggregatorDaoMock.getAll()).thenReturn(aggregators);
     }
 
-    @After
-    public void tearDown() throws Exception {
-
-    }
-
-    @Test
-    public void createAggretatorTest() throws RSSException {
-
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@id.com");
-        aggregator.setAggregatorName("aggregatorName");
-
-        toTest.createAggretator(aggregator);
-    }
-
-    @Test
-    (expected = RSSException.class)
-    public void createAggretatorRSSExceptionNotIDTest() throws RSSException {
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorName("aggregatorName");
-
-        toTest.createAggretator(aggregator);
-    }
-
-    @Test
-    (expected = RSSException.class)
-    public void createAggretatorRSSExceptionBadIDTest() throws RSSException {
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregatorID");
-        aggregator.setAggregatorName("aggregatorName");
-
-        toTest.createAggretator(aggregator);
+    private void testCreateAggregator (boolean isDefault) throws RSSException{
+        this.toTest.createAggretator(this.aggregator);
+        
+        // Validate calls
+        ArgumentCaptor<DbeAggregator> captor = ArgumentCaptor.forClass(DbeAggregator.class);
+        verify(this.dbeAggregatorDaoMock).create(captor.capture());
+        
+        DbeAggregator dbeAggregator = captor.getValue();
+        
+        Assert.assertEquals("aggregator@id.com", dbeAggregator.getTxEmail());
+        Assert.assertEquals("aggregatorName", dbeAggregator.getTxName());
+        Assert.assertEquals(isDefault, dbeAggregator.isDefaultAggregator());
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createAggretatorRSSExceptionNotNameTest() throws RSSException {
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@id.com");
-
-        toTest.createAggretator(aggregator);
+    public void createAggretator() throws RSSException{
+        this.testCreateAggregator(false);
     }
 
     @Test
-    (expected = RSSException.class)
+    public void createFirstAggregator() throws RSSException {
+        when(this.dbeAggregatorDaoMock.getAll()).thenReturn(new ArrayList<>());
+        this.testCreateAggregator(true);
+    }
+
+    @Test
+    public void createFirstDefaultAggregator() throws RSSException {
+        when(this.dbeAggregatorDaoMock.getAll()).thenReturn(new ArrayList<>());
+        this.aggregator.setDefaultAggregator(true);
+        
+        this.testCreateAggregator(true);
+    }
+
+    @Test
+    public void createDefaultAggregator() throws RSSException {
+        DbeAggregator defaultAggregator = new DbeAggregator();
+        defaultAggregator.setDefaultAggregator(true);
+
+        this.aggregator.setDefaultAggregator(true);
+        when(this.dbeAggregatorDaoMock.getDefaultAggregator()).thenReturn(defaultAggregator);
+
+        this.testCreateAggregator(true);
+
+        Assert.assertFalse(defaultAggregator.isDefaultAggregator());
+    }
+
+    private void testExceptionAggregator(InterfaceExceptionType exceptionType,
+            String errMsg) {
+        try {
+            this.toTest.createAggretator(this.aggregator);
+        } catch (RSSException e) {
+            Assert.assertEquals(exceptionType, e.getExceptionType());
+            Assert.assertEquals(errMsg, e.getMessage());
+        }
+    }
+
+    @Test
+    public void throwExceptionCreateAggretatorNullID() {
+        this.aggregator.setAggregatorId(null);
+        this.testExceptionAggregator(
+                UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: AggregatorID field is required for creating an aggregator");
+    }
+
+    @Test
+    public void throwExceptionCreateAggretatorEmptyID() {
+        this.aggregator.setAggregatorId("");
+        this.testExceptionAggregator(
+                UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: AggregatorID field is required for creating an aggregator");
+    }
+    
+    @Test
+    public void throwExceptionCreateAggretatorInvalidEmail() throws RSSException {
+        this.aggregator.setAggregatorId("aggregatorID");
+        this.testExceptionAggregator(UNICAExceptionType.INVALID_PARAMETER,
+                "Invalid parameter: AggregatorID field must be an email identifiying a valid Store owner");
+    }
+
+    @Test
+    public void throwExceptionCreateAggretatorNullName() {
+        this.aggregator.setAggregatorName(null);
+        this.testExceptionAggregator(
+                UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: AggregatorName field is required for creating an aggregator");
+    }
+    
+    @Test
+    public void throwExceptionCreateAggretatorEmptyName() {
+        this.aggregator.setAggregatorName("");
+        this.testExceptionAggregator(
+                UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: AggregatorName field is required for creating an aggregator");
+    }
+
+    @Test
     public void createAggretatorRSSExceptionAlreadyExistsTest() throws RSSException {
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@id.com");
-        aggregator.setAggregatorName("aggregatorName");
-
-        doThrow(NonUniqueObjectException.class).when(dbeAggregatorDaoMock).create(any(DbeAggregator.class));
-
-        toTest.createAggretator(aggregator);
+        when(this.dbeAggregatorDaoMock.getById("aggregator@id.com")).thenReturn(new DbeAggregator());
+        this.testExceptionAggregator(UNICAExceptionType.RESOURCE_ALREADY_EXISTS,
+                "Resource already exists: The Aggregator aggregator@id.com already exists");
     }
 
     @Test
-    public void getAPIAggregatorsTest() throws RSSException {
+    public void getAPIAggregators() throws RSSException {
         List <Aggregator> returned = toTest.getAPIAggregators();
 
-        Assert.assertEquals(0, returned.size());
+        Assert.assertEquals(1, returned.size());
+        
+        Aggregator r = returned.get(0);
+        Assert.assertEquals("prev@mail.com", r.getAggregatorId());
+        Assert.assertEquals("prevAggregator", r.getAggregatorName());
+        Assert.assertFalse(r.isDefaultAggregator());
     }
 
-    @Test
-    public void getAPIAggregatorsVoidTest() {
-
-        List <Aggregator> returned = toTest.getAPIAggregators();
-
-        Assert.assertTrue(returned.isEmpty());
-    }
 
     @Test
     public void getAggregatorTest() throws RSSException {

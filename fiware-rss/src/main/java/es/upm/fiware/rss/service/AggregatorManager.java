@@ -102,18 +102,28 @@ public class AggregatorManager {
             throw  new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
         }
 
+        // If this is the first aggegator it must be the default one
+        if (this.aggregatorDao.getAll().isEmpty()) {
+            aggregator.setDefaultAggregator(true);
+        }
+
+        // Change the default aggregator if needed
+        if (aggregator.isDefaultAggregator()) {
+            DbeAggregator agg = this.aggregatorDao.getDefaultAggregator();
+
+            if (agg != null) {
+                agg.setDefaultAggregator(false);
+            }
+        }
+
         // Build new aggregator object
         DbeAggregator dbAggregator = new DbeAggregator();
         dbAggregator.setTxEmail(aggregator.getAggregatorId());
         dbAggregator.setTxName(aggregator.getAggregatorName());
+        dbAggregator.setDefaultAggregator(aggregator.isDefaultAggregator());
 
         // Save aggregator to the DB
-        try {
-            this.aggregatorDao.create(dbAggregator);
-        } catch (org.hibernate.NonUniqueObjectException e) {
-            String[] args = {"The given aggregator already exists"};
-            throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
-        }
+        this.aggregatorDao.create(dbAggregator);
     }
 
     /**
@@ -126,12 +136,16 @@ public class AggregatorManager {
         List<Aggregator> apiAggregators = new ArrayList<>();
         List<DbeAggregator> aggregators = this.getAggregators();
 
-        for (DbeAggregator aggregator: aggregators) {
+        aggregators.stream().map((aggregator) -> {
             Aggregator apiAggregator = new Aggregator();
             apiAggregator.setAggregatorId(aggregator.getTxEmail());
             apiAggregator.setAggregatorName(aggregator.getTxName());
+            apiAggregator.setDefaultAggregator(aggregator.isDefaultAggregator());
+            return apiAggregator;
+        }).forEach((apiAggregator) -> {
             apiAggregators.add(apiAggregator);
-        }
+        });
+
         return apiAggregators;
     }
 
@@ -153,6 +167,7 @@ public class AggregatorManager {
         Aggregator aggregator = new Aggregator();
         aggregator.setAggregatorId(aggregatorId);
         aggregator.setAggregatorName(ag.getTxName());
+        aggregator.setDefaultAggregator(ag.isDefaultAggregator());
 
         return aggregator;
     }

@@ -57,7 +57,7 @@ public class AggregatorService {
     @GET
     public Response getAggregators() throws Exception {
 
-        List<Aggregator> aggregators = null;
+        List<Aggregator> aggregators;
 
         if (userManager.isAdmin()) {
             aggregators = aggregatorManager.getAPIAggregators();

@@ -48,4 +48,18 @@ public class DbeAggregatorDaoImpl extends GenericDaoImpl<DbeAggregator, String> 
         return DbeAggregator.class;
     }
 
+    @Override
+    public DbeAggregator getDefaultAggregator() {
+        String hql = "from DbeAggregator as p where p.defaultAggregator=true";
+
+        DbeAggregator aggregator;
+        try {
+            aggregator = (DbeAggregator) this.getSession().createQuery(hql).uniqueResult();
+        } catch (Exception e) {
+            aggregator = null;
+        }
+        
+        return aggregator;
+    }
+
 }
