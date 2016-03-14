@@ -171,7 +171,7 @@ public class ProviderManagerTest {
                 "Resource already exists: The provider " + this.providerInfo.getProviderId() + " of the aggregator " + this.providerInfo.getAggregatorId() + " already exists");
     }
 
-    private List<DbeAppProvider> getProvidersList() {
+    private DbeAppProvider buildProvider () {
         DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName",
                 this.providerInfo.getAggregatorId());
 
@@ -185,19 +185,25 @@ public class ProviderManagerTest {
         provModel.setTxName(this.providerInfo.getProviderId());
         provModel.setTxTimeStamp(new Date());
 
+        return provModel;
+    }
+
+    private List<DbeAppProvider> getProvidersList() {
         List <DbeAppProvider> providers = new LinkedList<>();
-        providers.add(provModel);
+        providers.add(this.buildProvider());
 
         return providers;
     }
 
-    private void validateProvidersList (List<RSSProvider> result) {
-        Assert.assertEquals(1, result.size());
-        RSSProvider provider = result.get(0);
-
+    private void validateProvider (RSSProvider provider) {
         Assert.assertEquals(this.providerInfo.getAggregatorId(), provider.getAggregatorId());
         Assert.assertEquals(this.providerInfo.getProviderId(), provider.getProviderId());
         Assert.assertEquals(this.providerInfo.getAggregatorId(), provider.getAggregatorId());
+    }
+
+    private void validateProvidersList (List<RSSProvider> result) {
+        Assert.assertEquals(1, result.size());
+        this.validateProvider(result.get(0));
     }
 
     @Test
@@ -228,50 +234,29 @@ public class ProviderManagerTest {
     }
 
     @Test
-    public void getProviderTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
+    public void getProvider() throws RSSException {
+        when(appProviderDao.getProvider(this.providerInfo.getAggregatorId(),
+                this.providerInfo.getProviderId())).thenReturn(this.buildProvider());
 
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
+        RSSProvider result = toTest.getProvider(
+                this.providerInfo.getAggregatorId(), this.providerInfo.getProviderId());
 
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(providerId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(providerId);
-        provModel.setTxTimeStamp(new Date());
-
-
-        doNothing().when(modelsManager).checkValidAppProvider(aggregatorId, providerId);
-        when(appProviderDao.getProvider(aggregatorId, providerId)).thenReturn(provModel);
-
-        toTest.getProvider(aggregatorId, providerId);
+        this.validateProvider(result);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void getProviderRSSExceptionNotValidAppProviderTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-
-        doThrow(RSSException.class).when(modelsManager).checkValidAppProvider(aggregatorId, providerId);
-
-        toTest.getProvider(aggregatorId, providerId);
-    }
-
-    @Test
-    (expected = RSSException.class)
     public void getProviderRSSExceptionNonExistentResourceTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
+        when(appProviderDao.getProvider(this.providerInfo.getAggregatorId(),
+                this.providerInfo.getProviderId())).thenReturn(null);
 
-        doNothing().when(modelsManager).checkValidAppProvider(aggregatorId, providerId);
-        when(appProviderDao.getProvider(aggregatorId, providerId)).thenReturn(null);
-
-        toTest.getProvider(aggregatorId, providerId);
+        try {
+            toTest.getProvider(
+                this.providerInfo.getAggregatorId(), this.providerInfo.getProviderId());
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, e.getExceptionType());
+            Assert.assertEquals(
+                    "Resource " + this.providerInfo.getAggregatorId() + " " + this.providerInfo.getProviderId() + " does not exist",
+                    e.getMessage());
+        }
     }
 }
