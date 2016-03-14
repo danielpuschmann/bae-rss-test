@@ -134,59 +134,56 @@ public class ProviderManager {
     /**
      * Create a new provider for a given aggregator.
      * 
-     * @param providerId
-     * @param providerName
-     * @param aggregatorId
+     * @param provider
      * @throws RSSException
      */
-    public void createProvider(String providerId, String providerName,
-            String aggregatorId) throws RSSException {
+    public void createProvider(RSSProvider provider) throws RSSException {
 
-        logger.debug("Creating provider: {}", providerId);
+        logger.debug("Creating provider: {}", provider.getProviderId());
 
         // Validate required fields
-        if (providerId == null || providerId.isEmpty()) {
+        if (provider.getProviderId() == null || provider.getProviderId().isEmpty()) {
             String[] args = {"ProviderID field is required for creating a provider"};
             throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
 
-        if (providerName == null || providerName.isEmpty()) {
+        if (provider.getProviderName() == null || provider.getProviderName().isEmpty()) {
             String[] args = {"ProviderName field is required for creating a provider"};
             throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
 
-        if (aggregatorId == null || aggregatorId.isEmpty()) {
+        if (provider.getAggregatorId() == null || provider.getAggregatorId().isEmpty()) {
             String[] args = {"AggregatorID field is required for creating a provider"};
             throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
 
         // Check that the aggregator exists
-        DbeAggregator aggregator = this.aggregatorDao.getById(aggregatorId);
+        DbeAggregator aggregator = this.aggregatorDao.getById(provider.getAggregatorId());
         if (aggregator == null) {
-            String[] args = {"The given aggregator does not exists"};
+            String[] args = {provider.getAggregatorId()};
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
         }
 
-        DbeAppProvider provModel = this.appProviderDao.getProvider(aggregatorId, providerId);
+        DbeAppProvider provModel = this.appProviderDao.getProvider(provider.getAggregatorId(), provider.getProviderId());
 
         if (provModel != null) {
-            String[] args = {"The provider " + providerId + " of the aggregator " + aggregatorId + " already exists"};
+            String[] args = {"The provider " + provider.getProviderId() + " of the aggregator " + provider.getAggregatorId() + " already exists"};
             throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
         }
 
         // Build provider ID
         DbeAppProviderId id = new DbeAppProviderId();
-        id.setTxAppProviderId(providerId);
+        id.setTxAppProviderId(provider.getProviderId());
         id.setAggregator(aggregator);
 
         // Build new Provider entity
-        DbeAppProvider provider = new DbeAppProvider();
-        provider.setId(id);
-        provider.setTxName(providerName);
-        provider.setTxCorrelationNumber(0);
-        provider.setTxTimeStamp(new Date());
+        DbeAppProvider dbeProvider = new DbeAppProvider();
+        dbeProvider.setId(id);
+        dbeProvider.setTxName(provider.getProviderName());
+        dbeProvider.setTxCorrelationNumber(0);
+        dbeProvider.setTxTimeStamp(new Date());
 
         // Create provider
-        appProviderDao.create(provider);
+        appProviderDao.create(dbeProvider);
     }
 }

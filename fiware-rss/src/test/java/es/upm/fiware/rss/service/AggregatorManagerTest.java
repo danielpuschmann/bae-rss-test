@@ -24,16 +24,13 @@ import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.DbeAggregator;
 import java.util.ArrayList;
 import java.util.List;
-import org.hibernate.NonUniqueObjectException;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
-import static org.mockito.Matchers.*;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;

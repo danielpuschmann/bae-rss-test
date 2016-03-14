@@ -19,10 +19,13 @@ package es.upm.fiware.rss.service;
 
 import es.upm.fiware.rss.dao.DbeAggregatorDao;
 import es.upm.fiware.rss.dao.DbeAppProviderDao;
+import es.upm.fiware.rss.exception.InterfaceExceptionType;
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeAppProviderId;
+import es.upm.fiware.rss.model.RSSProvider;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,6 +33,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.*;
@@ -51,11 +55,22 @@ public class ProviderManagerTest {
     @Mock private RSSModelsManager modelsManager;
     @InjectMocks private ProviderManager toTest;
 
+    private RSSProvider providerInfo;
+    private DbeAggregator aggregator;
+
     public ProviderManagerTest() {}
 
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        this.providerInfo = new RSSProvider();
+        this.providerInfo.setProviderId("providerId");
+        this.providerInfo.setProviderName("providerName");
+        this.providerInfo.setAggregatorId("aggregator@mail.com");
+
+        this.aggregator = new DbeAggregator("aggregatorName", this.providerInfo.getAggregatorId());
+        when(aggregatorDao.getById(this.providerInfo.getAggregatorId())).thenReturn(aggregator);
     }
 
     @After
@@ -64,135 +79,96 @@ public class ProviderManagerTest {
     }
 
     @Test
-    public void createProviderTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
-        String aggregatorId = "aggregator@mail.com";
+    public void createProviderCorrect () throws RSSException {
 
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
+        toTest.createProvider(this.providerInfo);
 
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
+        // Validate calls
+        ArgumentCaptor<DbeAppProvider> captor = ArgumentCaptor.forClass(DbeAppProvider.class);
+        verify(this.appProviderDao).create(captor.capture());
+        
+        DbeAppProvider createdProvider = captor.getValue();
+        
+        Assert.assertEquals(this.providerInfo.getProviderId(), createdProvider.getId().getTxAppProviderId());
+        Assert.assertEquals(this.providerInfo.getAggregatorId(), createdProvider.getId().getAggregator().getTxEmail());
+        Assert.assertEquals(this.providerInfo.getProviderName(), createdProvider.getTxName());
+        Assert.assertEquals(0, createdProvider.getTxCorrelationNumber().intValue());
+    }
 
-        toTest.createProvider(providerId, providerName, aggregatorId);
-
+    private void testExceptionProvider(InterfaceExceptionType exceptionType,
+            String errMsg) {
+        try {
+            this.toTest.createProvider(this.providerInfo);
+        } catch (RSSException e) {
+            Assert.assertEquals(exceptionType, e.getExceptionType());
+            Assert.assertEquals(errMsg, e.getMessage());
+        }
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionMissingParameter1NullTest() throws RSSException {
-        String providerId = null;
-        String providerName = "providerName";
-        String aggregatorId = "aggregator@mail.com";
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void throwRSSExceptionNullProviderId () throws RSSException {
+        this.providerInfo.setProviderId(null);
+        this.testExceptionProvider(UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: ProviderID field is required for creating a provider");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionMissingParameter1VoidTest() throws RSSException {
-        String providerId = "";
-        String providerName = "providerName";
-        String aggregatorId = "aggregator@mail.com";
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void  throwRSSExceptionEmptyProviderId () throws RSSException {
+        this.providerInfo.setProviderId("");
+        this.testExceptionProvider(UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: ProviderID field is required for creating a provider");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionMissingParameter2NullTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = null;
-        String aggregatorId = "aggregator@mail.com";
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void throwRSSExceptionNullProviderName() throws RSSException {
+        this.providerInfo.setProviderName(null);
+        this.testExceptionProvider(UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: ProviderName field is required for creating a provider");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionMissingParameter2VoidTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = "";
-        String aggregatorId = "aggregator@mail.com";
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void throwRSSExceptionEmptyProviderName() throws RSSException {
+        this.providerInfo.setProviderName("");
+        this.testExceptionProvider(UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: ProviderName field is required for creating a provider");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionMissingParameter3NullTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
-        String aggregatorId = null;
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void throwRSSExceptionNullAggregatorId() throws RSSException {
+        this.providerInfo.setAggregatorId(null);
+        this.testExceptionProvider(UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: AggregatorID field is required for creating a provider");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionMissingParameter3VoidTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
-        String aggregatorId = "";
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void throwRSSExceptionEmptyAggregatorId() throws RSSException {
+        this.providerInfo.setAggregatorId("");
+        this.testExceptionProvider(UNICAExceptionType.MISSING_MANDATORY_PARAMETER,
+                "Missing mandatory parameter: AggregatorID field is required for creating a provider");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionNotExistentResourceTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
-        String aggregatorId = "aggregator@mail.com";
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(null);
-
-        toTest.createProvider(providerId, providerName, aggregatorId);
+    public void throwRSSExceptionNonExistingAggregator() throws RSSException {
+        when(aggregatorDao.getById(this.providerInfo.getAggregatorId())).thenReturn(null);
+        this.testExceptionProvider(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID,
+                "Resource " + this.aggregator.getTxEmail() + " does not exist");
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderRSSExceptionResourceAlreadyExistsTest() throws RSSException {
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
-        String aggregatorId = "aggregator@mail.com";
-
-        DbeAggregator aggregator = new DbeAggregator("aggregatorName", aggregatorId);
-
-        when(aggregatorDao.getById(aggregatorId)).thenReturn(aggregator);
+    public void throwRSSExceptionAlreadyExistingProvider () throws RSSException {
         DbeAppProviderId id = new DbeAppProviderId();
-        id.setAggregator(aggregator);
-        id.setTxAppProviderId(providerId);
+        id.setAggregator(this.aggregator);
+        id.setTxAppProviderId(this.providerInfo.getProviderId());
 
         DbeAppProvider prevProvider = new DbeAppProvider();
         prevProvider.setId(id);
 
-        when(appProviderDao.getProvider(aggregatorId, providerId)).thenReturn(prevProvider);
+        when(appProviderDao.getProvider(
+                this.aggregator.getTxEmail(), this.providerInfo.getProviderId()))
+                .thenReturn(prevProvider);
 
-        toTest.createProvider(providerId, providerName, aggregatorId);
+        this.testExceptionProvider(UNICAExceptionType.RESOURCE_ALREADY_EXISTS,
+                "Resource already exists: The provider " + this.providerInfo.getProviderId() + " of the aggregator " + this.providerInfo.getAggregatorId() + " already exists");
     }
 
     @Test

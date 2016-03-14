@@ -88,10 +88,7 @@ public class ProviderService {
         }
 
         // Create a new provider for the store represented by the User (AggregatorID)
-        providerManager.createProvider(
-            providerInfo.getProviderId(),
-            providerInfo.getProviderName(),
-            providerInfo.getAggregatorId());
+        providerManager.createProvider(providerInfo);
 
         ResponseBuilder rb = Response.status(Response.Status.CREATED.getStatusCode());
         return rb.build();
