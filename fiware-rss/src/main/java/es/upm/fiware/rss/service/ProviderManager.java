@@ -78,10 +78,9 @@ public class ProviderManager {
         List<RSSProvider> apiProviders = new ArrayList<>();
         List<DbeAppProvider> providers = this.getProviders(aggregatorId);
 
-        for(DbeAppProvider p: providers) {
-            RSSProvider apiProvider = this.getAPIModel(p);
+        providers.stream().map((p) -> this.getAPIModel(p)).forEach((apiProvider) -> {
             apiProviders.add(apiProvider);
-        }
+        });
         return apiProviders;
     }
 
@@ -115,7 +114,7 @@ public class ProviderManager {
      * @return
      * @throws RSSException
      */
-    public List<DbeAppProvider> getProviders(String aggregatorId) throws RSSException {
+    private List<DbeAppProvider> getProviders(String aggregatorId) throws RSSException {
         List<DbeAppProvider> providers;
 
         if (null != aggregatorId && !aggregatorId.isEmpty()) {

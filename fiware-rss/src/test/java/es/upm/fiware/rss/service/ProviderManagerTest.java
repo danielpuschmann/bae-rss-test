@@ -171,89 +171,61 @@ public class ProviderManagerTest {
                 "Resource already exists: The provider " + this.providerInfo.getProviderId() + " of the aggregator " + this.providerInfo.getAggregatorId() + " already exists");
     }
 
-    @Test
-    public void getAPIProvidersTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
+    private List<DbeAppProvider> getProvidersList() {
+        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName",
+                this.providerInfo.getAggregatorId());
 
         DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
         dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(providerId);
+        dbeAppProviderId.setTxAppProviderId(this.providerInfo.getProviderId());
 
         DbeAppProvider provModel = new DbeAppProvider();
         provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(providerId);
+        provModel.setTxCorrelationNumber(0);
+        provModel.setTxName(this.providerInfo.getProviderId());
         provModel.setTxTimeStamp(new Date());
 
         List <DbeAppProvider> providers = new LinkedList<>();
         providers.add(provModel);
 
-        when(appProviderDao.getProvidersByAggregator(aggregatorId)).thenReturn(providers);
+        return providers;
+    }
 
-        toTest.getAPIProviders(aggregatorId);
+    private void validateProvidersList (List<RSSProvider> result) {
+        Assert.assertEquals(1, result.size());
+        RSSProvider provider = result.get(0);
+
+        Assert.assertEquals(this.providerInfo.getAggregatorId(), provider.getAggregatorId());
+        Assert.assertEquals(this.providerInfo.getProviderId(), provider.getProviderId());
+        Assert.assertEquals(this.providerInfo.getAggregatorId(), provider.getAggregatorId());
     }
 
     @Test
-    public void getProvidersTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
+    public void getAPIProvidersFromAggregator () throws RSSException {
+        List<DbeAppProvider> providers = this.getProvidersList();
 
-        List <DbeAppProvider> providers = new LinkedList<>();
-        DbeAppProvider appProvider = new DbeAppProvider();
-        providers.add(appProvider);
+        when(appProviderDao.getProvidersByAggregator(
+                this.providerInfo.getAggregatorId())).thenReturn(providers);
 
-        when(appProviderDao.getProvidersByAggregator(aggregatorId)).thenReturn(providers);
-
-        List <DbeAppProvider> returned = toTest.getProviders(aggregatorId);
-        Assert.assertEquals(providers, returned);
+        List<RSSProvider> result = toTest.getAPIProviders(this.providerInfo.getAggregatorId());
+        this.validateProvidersList(result);
     }
 
     @Test
-    public void getProvidersNullTest() throws RSSException {
-        String aggregatorId = null;
-
-        List <DbeAppProvider> providers = new LinkedList<>();
-        DbeAppProvider appProvider = new DbeAppProvider();
-        providers.add(appProvider);
+    public void getAllAPIProviders () throws RSSException {
+        List<DbeAppProvider> providers = this.getProvidersList();
 
         when(appProviderDao.getAll()).thenReturn(providers);
 
-        List <DbeAppProvider> returned = toTest.getProviders(aggregatorId);
-        Assert.assertEquals(providers, returned);
+        List<RSSProvider> result = toTest.getAPIProviders(null);
+        this.validateProvidersList(result);
     }
 
     @Test
-    public void getProvidersVoidTest() throws RSSException {
-        String aggregatorId = "";
-
-        List <DbeAppProvider> providers = new LinkedList<>();
-        DbeAppProvider appProvider = new DbeAppProvider();
-        providers.add(appProvider);
-
-        when(appProviderDao.getAll()).thenReturn(providers);
-
-        List <DbeAppProvider> returned = toTest.getProviders(aggregatorId);
-        Assert.assertEquals(providers, returned);
+    public void getAPIProvidersNoneExisting () throws RSSException {
+        List<RSSProvider> result = toTest.getAPIProviders(null);
+        Assert.assertEquals(0, result.size());
     }
-
-    @Test
-    public void getProvidersVoidListTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-
-        List <DbeAppProvider> providers = new LinkedList<>();
-        DbeAppProvider appProvider = new DbeAppProvider();
-        providers.add(appProvider);
-
-        when(appProviderDao.getProvidersByAggregator(aggregatorId)).thenReturn(null);
-
-        List <DbeAppProvider> returned = toTest.getProviders(aggregatorId);
-        Assert.assertTrue(returned.isEmpty());
-    }
-
-
 
     @Test
     public void getProviderTest() throws RSSException {
