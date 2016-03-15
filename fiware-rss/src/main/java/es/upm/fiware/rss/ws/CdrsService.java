@@ -130,25 +130,24 @@ public class CdrsService {
 
             if ((!this.userManager.isAggregator()
                     || !this.userManager.getCurrentUser().getEmail().equalsIgnoreCase(effectiveAggregator))
-                    && (provider != null && !provider.getAggregatorId().equals(effectiveAggregator))) {
+                    && !this.userManager.isSeller()) {
 
                 String[] args = {"You are not allowed to retrieve transactions of the specified aggregator"};
                 throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
             }
 
-            // Get the effective provider
-            if (providerId == null && !this.userManager.isAggregator()) {
-                if (!this.userManager.isSeller()) {
-                    String[] args = {"You are not allowed to retrieve transactions"};
-                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-                }
-
+            if (!this.userManager.isAggregator()) {
                 if (provider == null) {
                     String[] args = {"You do not have a provider profile, please contact with the administrator"};
                     throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
                 }
-
-                effectiveProvider = provider.getProviderId();
+                // Get the effective provider
+                if (providerId == null) {
+                    effectiveProvider = provider.getProviderId();
+                } else if (!provider.getProviderId().equals(providerId)) {
+                    String[] args = {"You are not allowed to retrieve transactions of the specified provider"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
             }
         }
 

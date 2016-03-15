@@ -22,13 +22,18 @@
 package es.upm.fiware.rss.ws;
 
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Aggregator;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.model.CDR;
+import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.CdrsManager;
+import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,90 +48,157 @@ public class CdrsServiceTest {
 
     @Mock private UserManager userManager;
     @Mock private CdrsManager cdrsManager;
+    @Mock private AggregatorManager aggregatorManager;
+    @Mock private ProviderManager providerManager;
     @InjectMocks private CdrsService toTest;
+
+    private RSUser user;
+    private final String aggregatorId = "aggregator@mail.com";
+    private final String providerId = "providerId";
 
     @Before
     public void setUp() throws Exception {
-
-    }
-
-    @Before
-    public void tearDown() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        this.user = new RSUser();
+        this.user.setId("userId");
+        this.user.setDisplayName("username");
+        this.user.setEmail("user@mail.com");
+
+        when(userManager.getCurrentUser()).thenReturn(this.user);
     }
 
     @Test
-    public void createCdrTest() throws Exception {
-
+    public void createCdr() throws Exception {
         List <CDR> list = new LinkedList<>();
+        when(userManager.isAdmin()).thenReturn(true);
 
         toTest.createCdr(list);
         verify(cdrsManager).createCDRs(list);
     }
 
     @Test
-    public void getCDRsTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String userId = "user@mail.com";
+    public void createCdrNotAllowed() throws Exception {
+        List<CDR> list = new LinkedList<>();
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
+        try {
+            toTest.createCdr(list);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: You are not allowed to create transactions", e.getMessage());
+        }
+    }
+
+    private void testCorrectCDRsRetrieving(String effectiveAggregator,
+            String effectiveProvider, String aggregator,
+            String provider) throws Exception {
 
         List <CDR> list = new LinkedList<>();
+        when(cdrsManager.getCDRs(effectiveAggregator, effectiveProvider)).thenReturn(list);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
+        Response response = toTest.getCDRs(aggregator, provider);
+
+        Assert.assertEquals(200, response.getStatus());
+        Assert.assertEquals(list, response.getEntity());
+    }
+
+    @Test
+    public void getProviderCDRsAdminUser() throws Exception {
         when(userManager.isAdmin()).thenReturn(true);
-        when(cdrsManager.getCDRs(userId, providerId)).thenReturn(list);
-
-        Response response = toTest.getCDRs(aggregatorId, providerId);
-
-        Assert.assertEquals(200, response.getStatus());
-        Assert.assertEquals(list, response.getEntity());
-    }
-
-
-    @Test
-    public void getCDRsNotAdminTest() throws Exception {
-        String providerId = "provider@mail.com";
-        String userId = "user@mail.com";
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        List <CDR> list = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(cdrsManager.getCDRs(userId, providerId)).thenReturn(list);
-
-        Response response = toTest.getCDRs(null, providerId);
-
-        Assert.assertEquals(200, response.getStatus());
-        Assert.assertEquals(list, response.getEntity());
+        this.testCorrectCDRsRetrieving(
+                this.aggregatorId, this.providerId, this.aggregatorId, this.providerId);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void getCDRsNotAdmin2Test() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String userId = "user@mail.com";
+    public void getDefaultAggregatorCDRsAggregatorUser() throws Exception {
+        when(userManager.isAggregator()).thenReturn(true);
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
+        Aggregator defaultAggregator = new Aggregator();
+        defaultAggregator.setAggregatorId(this.user.getEmail());
 
-        List <CDR> list = new LinkedList<>();
+        when(aggregatorManager.getDefaultAggregator()).thenReturn(defaultAggregator);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(cdrsManager.getCDRs(userId, providerId)).thenReturn(list);
-
-        Response response = toTest.getCDRs(aggregatorId, providerId);
-        Assert.assertEquals(list, response.getEntity());
+        this.testCorrectCDRsRetrieving(this.user.getEmail(), null, null, null);
     }
 
+    @Test
+    public void getProviderCDRsSellerUser() throws Exception {
+        when(userManager.isSeller()).thenReturn(true);
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+        provider.setProviderId(providerId);
+        this.user.setId(providerId);
+
+        when(providerManager.getProvider(this.aggregatorId, this.providerId)).thenReturn(provider);
+
+        this.testCorrectCDRsRetrieving(this.aggregatorId, this.providerId, this.aggregatorId, this.providerId);
+    }
+
+    @Test
+    public void getDefaultProviderCDRsSellerUser() throws Exception {
+        when(userManager.isSeller()).thenReturn(true);
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+
+        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
+
+        this.testCorrectCDRsRetrieving(this.aggregatorId, this.user.getId(), this.aggregatorId, null);
+    }
+
+    private void testExceptionCDRRetrieving (
+            String aggregator, String provider, String msg) throws Exception {
+        try {
+            toTest.getCDRs(aggregator, provider);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: " + msg, e.getMessage());
+        }
+    }
+
+    @Test
+    public void throwExceptionGetCDRsNoRole() throws Exception {
+        this.testExceptionCDRRetrieving(
+                this.aggregatorId, this.providerId,
+                "You are not allowed to retrieve transactions");
+    }
+
+    @Test
+    public void throwExceptionNoDefaultAggregator() throws Exception {
+        when(userManager.isAggregator()).thenReturn(true);
+        this.testExceptionCDRRetrieving(
+                null, null, "There isn't any aggregator registered");
+    }
+
+    @Test
+    public void throwExceptionAggregatorNotAllowed() throws Exception {
+        when(userManager.isAggregator()).thenReturn(true);
+        this.testExceptionCDRRetrieving(aggregatorId, null,
+                "You are not allowed to retrieve transactions of the specified aggregator");
+    }
+
+    @Test
+    public void throwExceptionProviderPofileNotExisting() throws Exception {
+        when(userManager.isSeller()).thenReturn(true);
+        this.testExceptionCDRRetrieving(
+                aggregatorId, null, "You do not have a provider profile, please contact with the administrator");
+    }
+
+    @Test
+    public void throwExceptionProviderNotAllowed() throws Exception {
+        when(userManager.isSeller()).thenReturn(true);
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+        provider.setProviderId(this.user.getId());
+
+        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
+
+        this.testExceptionCDRRetrieving(
+                this.aggregatorId, this.providerId,
+                "You are not allowed to retrieve transactions of the specified provider");
+    }
 }
