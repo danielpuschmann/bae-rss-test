@@ -21,6 +21,7 @@
 
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,7 +32,6 @@ import es.upm.fiware.rss.service.CdrsManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
@@ -109,7 +109,7 @@ public class CdrsServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void getCDRsNotAdmin2Test() throws Exception {
         String aggregatorId = "aggregator@mail.com";
         String providerId = "provider@mail.com";

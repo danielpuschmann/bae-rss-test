@@ -16,13 +16,13 @@
   */
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import static org.junit.Assert.fail;
@@ -65,7 +65,7 @@ public class AggregatorServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void createAggregatorNotAdminTest() throws Exception {
 
         when(userManager.isAdmin()).thenReturn(false);

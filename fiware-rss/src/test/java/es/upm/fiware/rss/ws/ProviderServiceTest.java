@@ -16,16 +16,15 @@
  */
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -76,7 +75,7 @@ public class ProviderServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void createProviderNotAdminTest() throws Exception {
         String aggregatorId = "aggregator@mail.com";
         String providerId = "provider@mail.com";
@@ -183,7 +182,7 @@ public class ProviderServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void getProvidersNotAllowedTest() throws Exception {
         String queryId = "aggregator@mail.com";
         String userId = "user@mail.com";

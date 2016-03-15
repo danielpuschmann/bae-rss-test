@@ -21,6 +21,7 @@
 
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
 import javax.ws.rs.core.Response;
 
 import org.junit.Assert;
@@ -32,7 +33,6 @@ import es.upm.fiware.rss.service.RSSModelsManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.when;
@@ -72,7 +72,7 @@ public class RSSModelServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void createRSSModelNotAllowedTest() throws Exception {
         RSSModel model = new RSSModel();
         model.setAggregatorId("aggregator@mail.com");
@@ -147,7 +147,7 @@ public class RSSModelServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void getRssModelsNotAllowedTest() throws Exception {
         String appProviderId = "provider@mail.com";
         String productClass = "productClass";
@@ -209,7 +209,7 @@ public class RSSModelServiceTest {
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
+    (expected = RSSException.class)
     public void modifyRSSModelNotAllowedTest() throws Exception {
         RSSModel model = new RSSModel();
         model.setAggregatorId("aggregator@mail.com");
