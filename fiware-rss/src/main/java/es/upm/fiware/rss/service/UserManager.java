@@ -1,6 +1,6 @@
 /**
  * Revenue Settlement and Sharing System GE
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -41,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserManager {
 
     @Autowired
-    UserDao userDao;
+    private UserDao userDao;
 
     @Autowired
     @Qualifier(value = "oauthProperties")
@@ -57,7 +57,7 @@ public class UserManager {
 
         if (user == null) {
             throw new RSSException(
-                    UNICAExceptionType.NON_EXISTENT_RESOURCE_ID,
+                    UNICAExceptionType.NON_ALLOWED_OPERATION,
                     "Your user is not authorized to access the RSS");
         }
         return user;
@@ -69,7 +69,7 @@ public class UserManager {
      * @return true if the user contains the given role
      * @throws RSSException, if there is not a user object attached to the session
      */
-    public boolean checkRole(String role) throws RSSException{
+    private boolean checkRole(String role) throws RSSException{
         boolean found = false;
         RSUser user = this.getCurrentUser();
         Iterator<Role> roles = user.getRoles().iterator();
@@ -91,5 +91,27 @@ public class UserManager {
     public boolean isAdmin() throws RSSException{
         return this.checkRole(
             oauthProperties.getProperty("config.grantedRole"));
+    }
+
+    /**
+     * Check whether the current user has the aggregator role, that is, the 
+     * user is a store admin
+     * @return
+     * @throws RSSException 
+     */
+    public boolean isAggregator() throws RSSException {
+        return this.checkRole(
+                oauthProperties.getProperty("config.aggregatorRole"));
+    }
+
+    /**
+     * Check whether the current user has the seller role, that is, the user is
+     * able to create RS models in a given aggregator
+     * @return
+     * @throws RSSException 
+     */
+    public boolean isSeller() throws RSSException {
+        return this.checkRole(
+                oauthProperties.getProperty("config.sellerRole"));
     }
 }

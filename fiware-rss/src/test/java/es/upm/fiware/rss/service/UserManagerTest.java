@@ -1,6 +1,6 @@
 /**
  * Revenue Settlement and Sharing System GE
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016 , CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,11 +21,11 @@ package es.upm.fiware.rss.service;
 import es.upm.fiware.rss.common.properties.AppProperties;
 import es.upm.fiware.rss.dao.UserDao;
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.model.Role;
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -41,8 +41,6 @@ import org.mockito.MockitoAnnotations;
 
 public class UserManagerTest {
 
-
-
     @Mock UserDao userDaoMock;
     @Mock AppProperties appProperties;
     @InjectMocks private UserManager userManager;
@@ -52,120 +50,82 @@ public class UserManagerTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-
+        
+        when(appProperties.getProperty("config.grantedRole")).thenReturn("admin");
+        when(appProperties.getProperty("config.sellerRole")).thenReturn("seller");
+        when(appProperties.getProperty("config.aggregatorRole")).thenReturn("aggregator");
     }
 
     @Test
-    public void checkRoleTest() throws RSSException {
+    public void getCurrentUser() throws RSSException {
         RSUser rSUser = new RSUser();
-        rSUser.setDisplayName("nombre");
-        rSUser.setEmail("mail@mail.com");
-        rSUser.setId("mail@mail.com");
-
-        Set <Role> roles = new HashSet<>();
-        Role rol1 = new Role();
-        rol1.setId("idRol1");
-        rol1.setName("Rol1");
-        Role rol2 = new Role();
-        rol2.setId("idRol2");
-        rol2.setName("Rol2");
-
-        roles.add(rol1);
-        roles.add(rol2);
-        rSUser.setRoles(roles);
-
-        when(userDaoMock.getCurrentUser()).thenReturn(rSUser);
-
-        assertTrue(userManager.checkRole("Rol1"));
-        assertTrue(userManager.checkRole("Rol2"));
-        assertFalse(userManager.checkRole("Rol3"));
-    }
-
-    @Test
-    (expected = RSSException.class)
-    public void checkRoleRSSExceptionTest() throws RSSException {
-
-        userManager.userDao = userDaoMock;
-        when(userDaoMock.getCurrentUser()).thenReturn(null);
-
-        userManager.checkRole("Rol1");
-    }
-
-    @Test
-    public void getCurrentUserTest() throws RSSException {
-        RSUser rSUser = new RSUser();
-
-        userManager.userDao = userDaoMock;
         when(userDaoMock.getCurrentUser()).thenReturn(rSUser);
 
         RSUser returned = userManager.getCurrentUser();
 
-        assertNotNull(returned);
+        assertEquals(rSUser, returned);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void getCurrentUserNullTest() throws RSSException{
-        userManager.userDao = userDaoMock;
+    public void getCurrentUserNoneExisting() throws RSSException{
         when(userDaoMock.getCurrentUser()).thenReturn(null);
 
-        userManager.getCurrentUser();
+        try {
+            userManager.getCurrentUser();
+        } catch (RSSException e) {
+            assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            assertEquals("Your user is not authorized to access the RSS", e.getMessage());
+        }
+    }
+
+    private void mockUser(String ... roles) {
+        RSUser rSUser = new RSUser();
+        Set <Role> rolesSet = new HashSet<>();
+        
+        for (String role: roles) {
+            Role r = new Role();
+            r.setId(role);
+            r.setName(role);
+            rolesSet.add(r);
+        }
+        rSUser.setRoles(rolesSet);
+        
+        when(userDaoMock.getCurrentUser()).thenReturn(rSUser);
     }
 
     @Test
-    public void isAdminTrueTest() throws RSSException {
-        RSUser rSUser = new RSUser();
-        Set <Role> roles = new HashSet<>();
-        Role rol1 = new Role();
-        rol1.setId("other");
-        rol1.setName("Other");
-        Role rol2 = new Role();
-        rol2.setId("admin");
-        rol2.setName("admin");
-
-        roles.add(rol1);
-        roles.add(rol2);
-        rSUser.setRoles(roles);
-
-        userManager.userDao = userDaoMock;
-        when(userDaoMock.getCurrentUser()).thenReturn(rSUser);
-        when(appProperties.getProperty("config.grantedRole")).thenReturn("admin");
-
+    public void isAdmin() throws RSSException {
+        this.mockUser("other", "admin");
         assertTrue(userManager.isAdmin());
     }
 
     @Test
-    public void isAdminFalseTest() throws RSSException {
-        RSUser rSUser = new RSUser();
-        Set <Role> roles = new HashSet<>();
-        Role rol1 = new Role();
-        rol1.setId("idRol1");
-        rol1.setName("Rol1");
-        Role rol2 = new Role();
-        rol2.setId("idRol1");
-        rol2.setName("Rol1");
-
-        roles.add(rol1);
-        roles.add(rol2);
-        rSUser.setRoles(roles);
-
-        userManager.userDao = userDaoMock;
-        when(userDaoMock.getCurrentUser()).thenReturn(rSUser);
-
+    public void isNotAdmin() throws RSSException {
+        this.mockUser();
         assertFalse(userManager.isAdmin());
     }
 
     @Test
-    (expected = RSSException.class)
-    public void isAdminRSSExceptionTest() throws RSSException {
-        userManager.userDao = userDaoMock;
-        when(userDaoMock.getCurrentUser()).thenReturn(null);
-
-        userManager.isAdmin();
+    public void isAggregator () throws RSSException {
+        this.mockUser("aggregator", "other");
+        assertTrue(userManager.isAggregator());
     }
 
+    @Test
+    public void isNotAggregator () throws RSSException {
+        this.mockUser("provider", "other");
+        assertFalse(userManager.isAggregator());
+    }
+
+    @Test
+    public void isSeller () throws RSSException {
+        this.mockUser("aggregator", "seller");
+        assertTrue(userManager.isSeller());
+    }
+
+    @Test
+    public void isNotSeller () throws RSSException {
+        this.mockUser("provider", "other");
+        assertFalse(userManager.isSeller());
+    }
 }
