@@ -3,7 +3,7 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  *
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,7 +42,11 @@ import es.upm.fiware.rss.service.CdrsManager;
 import es.upm.fiware.rss.service.UserManager;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.CDR;
+import es.upm.fiware.rss.model.RSSProvider;
+import es.upm.fiware.rss.service.AggregatorManager;
+import es.upm.fiware.rss.service.ProviderManager;
 
 
 @WebService(serviceName = "cdrs", name = "cdrs")
@@ -60,6 +64,12 @@ public class CdrsService {
     @Autowired
     private UserManager userManager;
 
+    @Autowired
+    private AggregatorManager aggregatorManager;
+
+    @Autowired
+    private ProviderManager providerManager;
+
     /**
      * Web service used to receive new CDRs defining a set of transactions.
      * 
@@ -72,6 +82,12 @@ public class CdrsService {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response createCdr(List<CDR> cdrs) throws Exception {
         logger.info("createCdr POST Start.");
+
+        // Validate user permissions (Sellers cannot create CDRs)
+        if (!userManager.isAdmin() && !userManager.isAggregator()) {
+            String[] args = {"You are not allowed to create transactions"};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
 
         this.cdrsManager.createCDRs(cdrs);
         Response.ResponseBuilder rb = Response.status(Response.Status.CREATED.getStatusCode());
@@ -86,20 +102,57 @@ public class CdrsService {
 
         logger.debug("getCDRs GET start");
 
-        // Validate permissions
-        if (aggregatorId != null && !this.userManager.isAdmin() && 
-                !this.userManager.getCurrentUser().getEmail().equalsIgnoreCase(aggregatorId)) {
-
-            String[] args = {"You are not allowed to retrieve transactions of the Store owned by " + aggregatorId};
+        if (!userManager.isAdmin() && !userManager.isAggregator() && !userManager.isSeller()) {
+            String[] args = {"You are not allowed to retrieve transactions"};
             throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
         }
 
+        // Get the effective aggregator
         String effectiveAggregator = aggregatorId;
+        String effectiveProvider = providerId;
         if (!this.userManager.isAdmin()) {
-            effectiveAggregator = this.userManager.getCurrentUser().getEmail();
+            if (aggregatorId == null) {
+                // Extract the default aggregator if required
+                Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
+
+                if  (defaultAggregator == null) {
+                    String[] args = {"There isn't any aggregator registered"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+
+                effectiveAggregator = defaultAggregator.getAggregatorId();
+            }
+
+            // Validate if the user has permissions to retrieve transactions from 
+            // the effective aggregator
+            RSSProvider provider = this.providerManager.getProvider(
+                    effectiveAggregator, userManager.getCurrentUser().getId());
+
+            if ((!this.userManager.isAggregator()
+                    || !this.userManager.getCurrentUser().getEmail().equalsIgnoreCase(effectiveAggregator))
+                    && (provider != null && !provider.getAggregatorId().equals(effectiveAggregator))) {
+
+                String[] args = {"You are not allowed to retrieve transactions of the specified aggregator"};
+                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+            }
+
+            // Get the effective provider
+            if (providerId == null && !this.userManager.isAggregator()) {
+                if (!this.userManager.isSeller()) {
+                    String[] args = {"You are not allowed to retrieve transactions"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+
+                if (provider == null) {
+                    String[] args = {"You do not have a provider profile, please contact with the administrator"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+
+                effectiveProvider = provider.getProviderId();
+            }
         }
 
-        List<CDR> resp = this.cdrsManager.getCDRs(effectiveAggregator, providerId);
+        List<CDR> resp = this.cdrsManager.getCDRs(effectiveAggregator, effectiveProvider);
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(resp);

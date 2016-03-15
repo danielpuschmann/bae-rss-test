@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -61,9 +61,12 @@ public class AggregatorService {
 
         if (userManager.isAdmin()) {
             aggregators = aggregatorManager.getAPIAggregators();
-        } else {
+        } else if (userManager.isAggregator()) {
             aggregators = new ArrayList<>();
             aggregators.add(aggregatorManager.getAggregator(userManager.getCurrentUser().getEmail()));
+        } else {
+            String[] args = {"You are not allowed to retrieve aggregators"};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
         }
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());

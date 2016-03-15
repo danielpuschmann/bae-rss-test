@@ -103,7 +103,7 @@ public class CdrsManager {
      * Retrieve existing transactions filtered by aggregator and provider
      * @param aggregatorId, id of the aggregator used to filter the list
      * @param providerId, id of the provider used to filter the list
-     * @return, List of CDRs 
+     * @return List of CDRs 
      */
     public List<CDR> getCDRs(String aggregatorId, String providerId) {
         List<CDR> result;
