@@ -17,8 +17,11 @@
 package es.upm.fiware.rss.ws;
 
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
@@ -30,6 +33,7 @@ import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 
 /**
@@ -38,166 +42,140 @@ import org.mockito.MockitoAnnotations;
  */
 public class ProviderServiceTest {
 
-    @Mock ProviderManager providerManager;
-    @Mock UserManager userManager;
-    @InjectMocks ProviderService toTest;
+    @Mock private ProviderManager providerManager;
+    @Mock private UserManager userManager;
+    @Mock private AggregatorManager aggregatorManager;
+    @InjectMocks private ProviderService toTest;
 
-    public ProviderServiceTest() {
-    }
+    private RSSProvider provider;
+    private RSUser user;
+    private final String defaultAggregatorId  = "default@email.com";
 
     @Before
-    public void setUp() {
+    public void setUp() throws RSSException {
         MockitoAnnotations.initMocks(this);
+
+        this.provider = new RSSProvider();
+        this.provider.setAggregatorId("aggregator@mail.com");
+        this.provider.setProviderId("providerId");
+        this.provider.setProviderName("providerName");
+
+        this.user = new RSUser();
+        this.user.setDisplayName("username");
+        this.user.setEmail("user@mail.com");
+
+        when(this.userManager.getCurrentUser()).thenReturn(this.user);
+    }
+
+    private void mockDefaultAggregator() throws Exception {
+        Aggregator defaultAggregator = new Aggregator();
+        defaultAggregator.setAggregatorId(this.defaultAggregatorId);
+
+        this.user.setEmail(this.defaultAggregatorId);
+        when(this.aggregatorManager.getDefaultAggregator()).thenReturn(defaultAggregator);
     }
 
     @Test
-    public void createProviderTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
+    public void createProviderAdminUser() throws Exception {
+        when(this.userManager.isAdmin()).thenReturn(true);
 
-        RSSProvider provider = new RSSProvider();
-        provider.setAggregatorId(aggregatorId);
-        provider.setProviderId(providerId);
-        provider.setProviderName(providerName);
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(true);
-
-        Response response = toTest.createProvider(provider);
+        Response response = toTest.createProvider(this.provider);
 
         Assert.assertEquals(201 ,response.getStatus());
-
+        verify(this.providerManager).createProvider(this.provider);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createProviderNotAdminTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
+    public void createProviderDefaultAggregator() throws Exception {
+        when(this.userManager.isAggregator()).thenReturn(true);
+        this.provider.setAggregatorId(null);
 
-        RSSProvider provider = new RSSProvider();
-        provider.setAggregatorId(aggregatorId);
-        provider.setProviderId(providerId);
-        provider.setProviderName(providerName);
+        this.mockDefaultAggregator();
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-
-        toTest.createProvider(provider);
-    }
-
-    @Test
-    public void createProvider2Test() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String providerName = "providerName";
-
-        RSSProvider provider = new RSSProvider();
-        provider.setAggregatorId(aggregatorId);
-        provider.setProviderId(providerId);
-        provider.setProviderName(providerName);
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(aggregatorId);
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(true);
-
-        Response response = toTest.createProvider(provider);
+        Response response = toTest.createProvider(this.provider);
 
         Assert.assertEquals(201 ,response.getStatus());
+        Assert.assertEquals(this.user.getEmail(), this.provider.getAggregatorId());
+        verify(this.providerManager).createProvider(this.provider);
     }
 
     @Test
-    public void getProvidersIsAdminTest() throws Exception {
-        String queryId = "aggregator@mail.com";
-        String userId = "user@mail.com";
+    public void throwRSSExceptionCreateProviderNotAllowed() throws Exception {
+        try {
+            toTest.createProvider(provider);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals(
+                    "Operation is not allowed: You are not allowed to create a provider for the given aggregatorId",
+                    e.getMessage());
+        }
+    }
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(userId);
+    private void testGetProvidersCorrect(
+            String queryAggregator, String aggregator) throws Exception {
 
         List <RSSProvider> providers = new LinkedList<>();
+        when(providerManager.getAPIProviders(aggregator)).thenReturn(providers);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
+        Response response = toTest.getProviders(queryAggregator);
+
+        Assert.assertEquals(200 ,response.getStatus());
+        Assert.assertEquals(providers, response.getEntity());
+    }
+
+    @Test
+    public void getAllProvidersAdmin () throws Exception {
         when(userManager.isAdmin()).thenReturn(true);
-        when(providerManager.getAPIProviders(queryId)).thenReturn(providers);
-
-        Response response = toTest.getProviders(queryId);
-
-        Assert.assertEquals(200 ,response.getStatus());
-        Assert.assertEquals(providers ,response.getEntity());
+        this.testGetProvidersCorrect(null, null);
     }
 
     @Test
-    public void getProvidersNoAdmin1Test() throws Exception {
-        String userId = "user@mail.com";
+    public void getProvidersDefaultAggregator () throws Exception {
+        when(userManager.isAggregator()).thenReturn(true);
+        this.mockDefaultAggregator();
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(userId);
-
-        List <RSSProvider> providers = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(providerManager.getAPIProviders(userId)).thenReturn(providers);
-
-        Response response = toTest.getProviders(null);
-
-        Assert.assertEquals(200 ,response.getStatus());
-        Assert.assertEquals(providers ,response.getEntity());
-
+        this.testGetProvidersCorrect(null, this.defaultAggregatorId);
     }
 
     @Test
-    public void getProvidersNoAdmin2Test() throws Exception {
-        String queryId = "aggregator@mail.com";
+    public void getProvidersUserAggregator () throws Exception {
+        when(userManager.isAggregator()).thenReturn(true);
+        this.user.setEmail(this.provider.getAggregatorId());
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(queryId);
+        this.testGetProvidersCorrect(
+                this.provider.getAggregatorId(), this.provider.getAggregatorId());
+    }
 
-        List <RSSProvider> providers = new LinkedList<>();
+    private void testGetProvidersException (
+            String queryAggregator, String errMsg) throws Exception {
 
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(providerManager.getAPIProviders(queryId)).thenReturn(providers);
-
-        Response response = toTest.getProviders(queryId);
-
-        Assert.assertEquals(200 ,response.getStatus());
-        Assert.assertEquals(providers ,response.getEntity());
+        try {
+            this.toTest.getProviders(queryAggregator);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: " + errMsg, e.getMessage());
+        }
     }
 
     @Test
-    (expected = RSSException.class)
-    public void getProvidersNotAllowedTest() throws Exception {
-        String queryId = "aggregator@mail.com";
-        String userId = "user@mail.com";
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(userId);
-
-        List <RSSProvider> providers = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-
-        toTest.getProviders(queryId);
+    public void throwRSSExceptionNoRoles () throws Exception {
+        this.testGetProvidersException(
+                this.provider.getAggregatorId(), "You are not allowed to retrieve providers");
     }
 
+    @Test
+    public void throwRSSExceptionMissingAggregators () throws Exception {
+        when(this.userManager.isAggregator()).thenReturn(true);
+        this.testGetProvidersException(
+                null, "There isn't any aggregator registered");
+    }
 
+    @Test
+    public void throwRSSExceptionAggregatorNotAllowed() throws Exception {
+        when(this.userManager.isAggregator()).thenReturn(true);
+        this.testGetProvidersException(
+                this.provider.getAggregatorId(), "You are not allowed to get the providers of the given aggregator");
+    }
 }

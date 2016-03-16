@@ -34,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.AggregatorManager;
@@ -81,7 +82,7 @@ public class ProviderService {
         }
 
         // Check if the user can create a provider for the given aggregator
-        if (!providerInfo.getAggregatorId().equals(user.getEmail())
+        if (!userManager.isAggregator() && !providerInfo.getAggregatorId().equals(user.getEmail())
                 && !userManager.isAdmin()) {
             String[] args = {"You are not allowed to create a provider for the given aggregatorId"};
             throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
@@ -101,15 +102,28 @@ public class ProviderService {
             throws Exception{
 
         RSUser user = userManager.getCurrentUser();
-        String effectiveAggregator = null;
+        String effectiveAggregator = aggregatorId;
 
-        if (userManager.isAdmin()) {
-            effectiveAggregator = aggregatorId;
-        } else if (null == aggregatorId || aggregatorId.equals(user.getEmail())){
-            effectiveAggregator = user.getEmail();
-        } else {
-            String[] args = {"You are not allowed to get the providers of the given aggregator"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        if (!userManager.isAdmin()) {
+            if (!userManager.isAggregator()) {
+                String[] args = {"You are not allowed to retrieve providers"};
+                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+            }
+
+            if (aggregatorId == null) {
+                Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
+
+                if (defaultAggregator == null) {
+                    String[] args = {"There isn't any aggregator registered"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+                effectiveAggregator = defaultAggregator.getAggregatorId();
+            }
+
+            if (!user.getEmail().equals(effectiveAggregator)) {
+                String[] args = {"You are not allowed to get the providers of the given aggregator"};
+                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+            }
         }
 
         List<RSSProvider> providers = providerManager.getAPIProviders(effectiveAggregator);
