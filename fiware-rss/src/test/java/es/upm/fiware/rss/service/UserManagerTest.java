@@ -22,10 +22,14 @@ import es.upm.fiware.rss.common.properties.AppProperties;
 import es.upm.fiware.rss.dao.UserDao;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Aggregator;
+import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.model.Role;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -41,11 +45,15 @@ import org.mockito.MockitoAnnotations;
 
 public class UserManagerTest {
 
-    @Mock UserDao userDaoMock;
-    @Mock AppProperties appProperties;
+    @Mock private UserDao userDaoMock;
+    @Mock private AppProperties appProperties;
+    @Mock private AggregatorManager aggregatorManager;
+    @Mock private ProviderManager providerManager;
     @InjectMocks private UserManager userManager;
 
-    public UserManagerTest() {}
+    private RSUser user;
+    private final String aggregatorId = "aggregator@mail.com";
+    private final String providerId = "providerId";
 
     @Before
     public void setUp() throws Exception {
@@ -54,6 +62,10 @@ public class UserManagerTest {
         when(appProperties.getProperty("config.grantedRole")).thenReturn("admin");
         when(appProperties.getProperty("config.sellerRole")).thenReturn("seller");
         when(appProperties.getProperty("config.aggregatorRole")).thenReturn("aggregator");
+
+        this.user = new RSUser();
+        this.user.setEmail("user@email.com");
+        this.user.setId("username");
     }
 
     @Test
@@ -78,8 +90,7 @@ public class UserManagerTest {
         }
     }
 
-    private void mockUser(String ... roles) {
-        RSUser rSUser = new RSUser();
+    private void mockUserRoles(String ... roles) {
         Set <Role> rolesSet = new HashSet<>();
         
         for (String role: roles) {
@@ -88,44 +99,156 @@ public class UserManagerTest {
             r.setName(role);
             rolesSet.add(r);
         }
-        rSUser.setRoles(rolesSet);
+        user.setRoles(rolesSet);
         
-        when(userDaoMock.getCurrentUser()).thenReturn(rSUser);
+        when(userDaoMock.getCurrentUser()).thenReturn(user);
     }
 
     @Test
     public void isAdmin() throws RSSException {
-        this.mockUser("other", "admin");
+        this.mockUserRoles("other", "admin");
         assertTrue(userManager.isAdmin());
     }
 
     @Test
     public void isNotAdmin() throws RSSException {
-        this.mockUser();
+        this.mockUserRoles();
         assertFalse(userManager.isAdmin());
     }
 
     @Test
     public void isAggregator () throws RSSException {
-        this.mockUser("aggregator", "other");
+        this.mockUserRoles("aggregator", "other");
         assertTrue(userManager.isAggregator());
     }
 
     @Test
     public void isNotAggregator () throws RSSException {
-        this.mockUser("provider", "other");
+        this.mockUserRoles("provider", "other");
         assertFalse(userManager.isAggregator());
     }
 
     @Test
     public void isSeller () throws RSSException {
-        this.mockUser("aggregator", "seller");
+        this.mockUserRoles("aggregator", "seller");
         assertTrue(userManager.isSeller());
     }
 
     @Test
     public void isNotSeller () throws RSSException {
-        this.mockUser("provider", "other");
+        this.mockUserRoles("provider", "other");
         assertFalse(userManager.isSeller());
+    }
+
+    private void testGetAllowedIdsCorrect (
+            String effectiveAggregator, String effectiveProvider, String aggregator,
+            String provider) throws RSSException {
+
+        Map<String, String> result = this.userManager.getAllowedIds(aggregator, provider, "transactions");
+        
+        assertEquals(effectiveAggregator, result.get("aggregator"));
+        assertEquals(effectiveProvider, result.get("provider"));
+    }
+
+    @Test
+    public void getAllowedIdsAdminUser() throws Exception {
+        this.mockUserRoles("admin");
+
+        this.testGetAllowedIdsCorrect(null, null, null, null);
+    }
+
+    @Test
+    public void getAllowedIdsDefaultAggregatorAggregatorUser() throws Exception {
+        this.mockUserRoles("aggregator");
+
+        Aggregator defaultAggregator = new Aggregator();
+        defaultAggregator.setAggregatorId(this.user.getEmail());
+
+        when(aggregatorManager.getDefaultAggregator()).thenReturn(defaultAggregator);
+
+        this.testGetAllowedIdsCorrect(this.user.getEmail(), null, null, null);
+    }
+
+    @Test
+    public void getAllowedIdsProviderSellerUser() throws Exception {
+        this.mockUserRoles("seller");
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+        provider.setProviderId(providerId);
+        this.user.setId(providerId);
+
+        when(providerManager.getProvider(this.aggregatorId, this.providerId)).thenReturn(provider);
+
+        this.testGetAllowedIdsCorrect(
+                this.aggregatorId, this.providerId, this.aggregatorId, this.providerId);
+    }
+
+    @Test
+    public void getAllowedIdsDefaultProviderSellerUser() throws Exception {
+        this.mockUserRoles("seller");
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+        provider.setProviderId(this.user.getId());
+
+        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
+
+        this.testGetAllowedIdsCorrect(this.aggregatorId, this.user.getId(), this.aggregatorId, null);
+    }
+
+    private void testExceptionGetIds (
+            String aggregator, String provider, String msg) throws Exception {
+        try {
+            this.userManager.getAllowedIds(aggregator, provider, "transactions");
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: " + msg, e.getMessage());
+        }
+    }
+
+    @Test
+    public void throwExceptionNoRoles() throws Exception {
+        this.mockUserRoles();
+        this.testExceptionGetIds(
+                this.aggregatorId, this.providerId,
+                "You are not allowed to retrieve transactions");
+    }
+
+    @Test
+    public void throwExceptionNoDefaultAggregator() throws Exception {
+        this.mockUserRoles("aggregator");
+        this.testExceptionGetIds(
+                null, null, "There isn't any aggregator registered");
+    }
+
+    @Test
+    public void throwExceptionAggregatorNotAllowed() throws Exception {
+        this.mockUserRoles("aggregator");
+        this.testExceptionGetIds(aggregatorId, null,
+                "You are not allowed to retrieve transactions of the specified aggregator");
+    }
+
+    @Test
+    public void throwExceptionProviderPofileNotExisting() throws Exception {
+        this.mockUserRoles("seller");
+        this.testExceptionGetIds(
+                aggregatorId, null, "You do not have a provider profile, please contact with the administrator");
+    }
+
+    @Test
+    public void throwExceptionProviderNotAllowed() throws Exception {
+        this.mockUserRoles("seller");
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+        provider.setProviderId(this.user.getId());
+
+        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
+
+        this.testExceptionGetIds(
+                this.aggregatorId, this.providerId,
+                "You are not allowed to retrieve transactions of the specified provider");
     }
 }

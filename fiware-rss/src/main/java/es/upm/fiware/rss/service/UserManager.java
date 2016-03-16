@@ -24,8 +24,12 @@ import java.util.Iterator;
 import es.upm.fiware.rss.dao.UserDao;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Aggregator;
+import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.model.Role;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -42,6 +46,12 @@ public class UserManager {
 
     @Autowired
     private UserDao userDao;
+
+    @Autowired
+    private AggregatorManager aggregatorManager;
+
+    @Autowired
+    private ProviderManager providerManager;
 
     @Autowired
     @Qualifier(value = "oauthProperties")
@@ -113,5 +123,90 @@ public class UserManager {
     public boolean isSeller() throws RSSException {
         return this.checkRole(
                 oauthProperties.getProperty("config.sellerRole"));
+    }
+
+    /**
+     * Checks the basic permissions of the current user to retrieve objects
+     * identified by an aggregatorId and a providerId. it returns the effective
+     * aggregatorId and providerId to be used to access the database.
+     * 
+     * If the user has the admin role he wiil be able to retieve all the existing objects
+     *
+     * If the user has the aggregator role, he will be able to retieve all the
+     * objects that are included in the aggregator he owns
+     *
+     * If the user has the seller role, he will be able to retrieve all its objects
+     *
+     * If the aggregator id is not provided and the user is not admin, the effective
+     * aggregator will be the default one.
+     * 
+     * If the providerId is not provided and the user is not an admin nor an 
+     * aggregator, the effective providerId will be the user id
+     * 
+     * @param aggregatorId Id of the expect aggregator or null
+     * @param providerId Id of the expected provider or null
+     * @param relatedModel Identifies the type of object that will be retrieved
+     * @return a Map containing the effective aggregatorId and providerId to be used to access the database
+     * identified by the 'provider' and 'aggregator' keys
+     * @throws RSSException If the user has not permission to access to the requested aggregator and provider
+     */
+    public Map<String, String> getAllowedIds (
+            String aggregatorId, String providerId, String relatedModel) throws RSSException {
+
+        Map<String, String> result = new HashMap<>();
+
+        if (!this.isAdmin() && !this.isAggregator() && !this.isSeller()) {
+            String[] args = {"You are not allowed to retrieve " + relatedModel};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
+
+        // Get the effective aggregator
+        String effectiveAggregator = aggregatorId;
+        String effectiveProvider = providerId;
+        if (!this.isAdmin()) {
+            if (aggregatorId == null) {
+                // Extract the default aggregator if required
+                Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
+
+                if  (defaultAggregator == null) {
+                    String[] args = {"There isn't any aggregator registered"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+
+                effectiveAggregator = defaultAggregator.getAggregatorId();
+            }
+
+            // Validate if the user has permissions to retrieve transactions from 
+            // the effective aggregator
+            RSSProvider provider = this.providerManager.getProvider(
+                    effectiveAggregator, this.getCurrentUser().getId());
+
+            if ((!this.isAggregator()
+                    || !this.getCurrentUser().getEmail().equalsIgnoreCase(effectiveAggregator))
+                    && !this.isSeller()) {
+
+                String[] args = {"You are not allowed to retrieve " + relatedModel +" of the specified aggregator"};
+                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+            }
+
+            if (!this.isAggregator()) {
+                if (provider == null) {
+                    String[] args = {"You do not have a provider profile, please contact with the administrator"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+                // Get the effective provider
+                if (providerId == null) {
+                    effectiveProvider = provider.getProviderId();
+                } else if (!provider.getProviderId().equals(providerId)) {
+                    String[] args = {"You are not allowed to retrieve " + relatedModel +" of the specified provider"};
+                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+                }
+            }
+        }
+
+        result.put("provider", effectiveProvider);
+        result.put("aggregator", effectiveAggregator);
+
+        return result;
     }
 }

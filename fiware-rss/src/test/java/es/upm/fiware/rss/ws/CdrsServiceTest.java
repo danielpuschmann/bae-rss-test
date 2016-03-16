@@ -23,20 +23,19 @@ package es.upm.fiware.rss.ws;
 
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
-import es.upm.fiware.rss.model.Aggregator;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.model.CDR;
-import es.upm.fiware.rss.model.RSSProvider;
 import es.upm.fiware.rss.model.RSUser;
-import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.CdrsManager;
-import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
@@ -48,8 +47,6 @@ public class CdrsServiceTest {
 
     @Mock private UserManager userManager;
     @Mock private CdrsManager cdrsManager;
-    @Mock private AggregatorManager aggregatorManager;
-    @Mock private ProviderManager providerManager;
     @InjectMocks private CdrsService toTest;
 
     private RSUser user;
@@ -90,115 +87,21 @@ public class CdrsServiceTest {
         }
     }
 
-    private void testCorrectCDRsRetrieving(String effectiveAggregator,
-            String effectiveProvider, String aggregator,
-            String provider) throws Exception {
-
+    @Test
+    public void getProviderCDRs() throws Exception {
         List <CDR> list = new LinkedList<>();
-        when(cdrsManager.getCDRs(effectiveAggregator, effectiveProvider)).thenReturn(list);
+        when(cdrsManager.getCDRs(this.aggregatorId, this.providerId)).thenReturn(list);
 
-        Response response = toTest.getCDRs(aggregator, provider);
+        Map<String, String> ids = new HashMap<>();
+        ids.put("provider", this.providerId);
+        ids.put("aggregator", this.aggregatorId);
+
+        when(this.userManager.getAllowedIds(
+                this.aggregatorId, this.providerId, "transactions")).thenReturn(ids);
+
+        Response response = toTest.getCDRs(this.aggregatorId, this.providerId);
 
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(list, response.getEntity());
-    }
-
-    @Test
-    public void getProviderCDRsAdminUser() throws Exception {
-        when(userManager.isAdmin()).thenReturn(true);
-        this.testCorrectCDRsRetrieving(
-                this.aggregatorId, this.providerId, this.aggregatorId, this.providerId);
-    }
-
-    @Test
-    public void getDefaultAggregatorCDRsAggregatorUser() throws Exception {
-        when(userManager.isAggregator()).thenReturn(true);
-
-        Aggregator defaultAggregator = new Aggregator();
-        defaultAggregator.setAggregatorId(this.user.getEmail());
-
-        when(aggregatorManager.getDefaultAggregator()).thenReturn(defaultAggregator);
-
-        this.testCorrectCDRsRetrieving(this.user.getEmail(), null, null, null);
-    }
-
-    @Test
-    public void getProviderCDRsSellerUser() throws Exception {
-        when(userManager.isSeller()).thenReturn(true);
-
-        RSSProvider provider = new RSSProvider();
-        provider.setAggregatorId(this.aggregatorId);
-        provider.setProviderId(providerId);
-        this.user.setId(providerId);
-
-        when(providerManager.getProvider(this.aggregatorId, this.providerId)).thenReturn(provider);
-
-        this.testCorrectCDRsRetrieving(this.aggregatorId, this.providerId, this.aggregatorId, this.providerId);
-    }
-
-    @Test
-    public void getDefaultProviderCDRsSellerUser() throws Exception {
-        when(userManager.isSeller()).thenReturn(true);
-
-        RSSProvider provider = new RSSProvider();
-        provider.setAggregatorId(this.aggregatorId);
-
-        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
-
-        this.testCorrectCDRsRetrieving(this.aggregatorId, this.user.getId(), this.aggregatorId, null);
-    }
-
-    private void testExceptionCDRRetrieving (
-            String aggregator, String provider, String msg) throws Exception {
-        try {
-            toTest.getCDRs(aggregator, provider);
-            Assert.fail();
-        } catch (RSSException e) {
-            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
-            Assert.assertEquals("Operation is not allowed: " + msg, e.getMessage());
-        }
-    }
-
-    @Test
-    public void throwExceptionGetCDRsNoRole() throws Exception {
-        this.testExceptionCDRRetrieving(
-                this.aggregatorId, this.providerId,
-                "You are not allowed to retrieve transactions");
-    }
-
-    @Test
-    public void throwExceptionNoDefaultAggregator() throws Exception {
-        when(userManager.isAggregator()).thenReturn(true);
-        this.testExceptionCDRRetrieving(
-                null, null, "There isn't any aggregator registered");
-    }
-
-    @Test
-    public void throwExceptionAggregatorNotAllowed() throws Exception {
-        when(userManager.isAggregator()).thenReturn(true);
-        this.testExceptionCDRRetrieving(aggregatorId, null,
-                "You are not allowed to retrieve transactions of the specified aggregator");
-    }
-
-    @Test
-    public void throwExceptionProviderPofileNotExisting() throws Exception {
-        when(userManager.isSeller()).thenReturn(true);
-        this.testExceptionCDRRetrieving(
-                aggregatorId, null, "You do not have a provider profile, please contact with the administrator");
-    }
-
-    @Test
-    public void throwExceptionProviderNotAllowed() throws Exception {
-        when(userManager.isSeller()).thenReturn(true);
-
-        RSSProvider provider = new RSSProvider();
-        provider.setAggregatorId(this.aggregatorId);
-        provider.setProviderId(this.user.getId());
-
-        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
-
-        this.testExceptionCDRRetrieving(
-                this.aggregatorId, this.providerId,
-                "You are not allowed to retrieve transactions of the specified provider");
     }
 }
