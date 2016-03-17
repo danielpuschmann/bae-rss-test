@@ -23,7 +23,7 @@ xsi:schemaLocation="http://www.springframework.org/schema/beans
      <!-- common to all clients -->
      <beans:bean id="apiHeaderFilter" class="es.upm.fiware.rss.oauth.service.FIWAREHeaderAuthenticationFilter">
         <beans:constructor-arg value="/rss/" index="0" />
-        <beans:constructor-arg value="X-Actor-ID" index="1"/>
+        <beans:constructor-arg value="X-Nick-Name" index="1"/>
         <beans:constructor-arg value="X-Roles" index="2"/>
         <beans:constructor-arg value="X-Email" index="3"/>
         <beans:property name="authenticationManager" ref="authenticationManager" />

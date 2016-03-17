@@ -73,7 +73,7 @@ public class FIWAREHeaderAuthenticationFilter extends AbstractAuthenticationProc
     private AuthUserManager userManager;
 
     protected FIWAREHeaderAuthenticationFilter() {
-        this("/rss/", "X-Actor-ID", "X-Roles", "X-Email");
+        this("/rss/", "X-Nick-Name", "X-Roles", "X-Email");
     }
 
     protected FIWAREHeaderAuthenticationFilter(String baseUrl, String userHeader,
