@@ -213,7 +213,7 @@ public class UserManagerTest {
         this.mockUserRoles();
         this.testExceptionGetIds(
                 this.aggregatorId, this.providerId,
-                "You are not allowed to retrieve transactions");
+                "You are not allowed to manage transactions");
     }
 
     @Test
@@ -227,7 +227,7 @@ public class UserManagerTest {
     public void throwExceptionAggregatorNotAllowed() throws Exception {
         this.mockUserRoles("aggregator");
         this.testExceptionGetIds(aggregatorId, null,
-                "You are not allowed to retrieve transactions of the specified aggregator");
+                "You are not allowed to manage transactions of the specified aggregator");
     }
 
     @Test
@@ -249,6 +249,6 @@ public class UserManagerTest {
 
         this.testExceptionGetIds(
                 this.aggregatorId, this.providerId,
-                "You are not allowed to retrieve transactions of the specified provider");
+                "You are not allowed to manage transactions of the specified provider");
     }
 }

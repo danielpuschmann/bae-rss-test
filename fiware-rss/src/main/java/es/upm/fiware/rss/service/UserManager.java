@@ -156,7 +156,7 @@ public class UserManager {
         Map<String, String> result = new HashMap<>();
 
         if (!this.isAdmin() && !this.isAggregator() && !this.isSeller()) {
-            String[] args = {"You are not allowed to retrieve " + relatedModel};
+            String[] args = {"You are not allowed to manage " + relatedModel};
             throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
         }
 
@@ -185,7 +185,7 @@ public class UserManager {
                     || !this.getCurrentUser().getEmail().equalsIgnoreCase(effectiveAggregator))
                     && !this.isSeller()) {
 
-                String[] args = {"You are not allowed to retrieve " + relatedModel +" of the specified aggregator"};
+                String[] args = {"You are not allowed to manage " + relatedModel +" of the specified aggregator"};
                 throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
             }
 
@@ -198,7 +198,7 @@ public class UserManager {
                 if (providerId == null) {
                     effectiveProvider = provider.getProviderId();
                 } else if (!provider.getProviderId().equals(providerId)) {
-                    String[] args = {"You are not allowed to retrieve " + relatedModel +" of the specified provider"};
+                    String[] args = {"You are not allowed to manage " + relatedModel +" of the specified provider"};
                     throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
                 }
             }

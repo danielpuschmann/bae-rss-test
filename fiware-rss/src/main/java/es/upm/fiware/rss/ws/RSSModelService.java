@@ -43,10 +43,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import es.upm.fiware.rss.model.RSSModel;
 import es.upm.fiware.rss.service.RSSModelsManager;
-import es.upm.fiware.rss.exception.RSSException;
-import es.upm.fiware.rss.exception.UNICAExceptionType;
-import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.service.AggregatorManager;
+import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
+import java.util.Map;
 
 /**
  * 
@@ -62,16 +62,16 @@ public class RSSModelService {
      * Variable to print the trace.
      */
     private static Logger logger = LoggerFactory.getLogger(RSSModelService.class);
-    /**
-         * 
-         */
-    public static final String RESOURCE = "/rssModelManagement";
 
     @Autowired
     private RSSModelsManager rssModelsManager;
-    /**
-     * Oauth manager.
-     */
+
+    @Autowired
+    private ProviderManager providerManager;
+
+    @Autowired
+    private AggregatorManager aggregatorManager;
+ 
     @Autowired
     private UserManager userManager;
 
@@ -94,20 +94,11 @@ public class RSSModelService {
 
         RSSModelService.logger.debug("Into getRssModels()");
 
-        RSUser user = userManager.getCurrentUser();
-        String effectiveAggregator;
-
-        if (userManager.isAdmin()) {
-            effectiveAggregator = aggregatorId;
-        } else if (null == aggregatorId || aggregatorId.equals(user.getEmail())){
-            effectiveAggregator = user.getEmail();
-        } else {
-            String[] args = {"You are not allowed to retrieve RS models for the given aggregator"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, appProvider, "RS models");
 
         // Call service
-        List<RSSModel> rssModels = rssModelsManager.getRssModels(effectiveAggregator, appProvider, productClass);
+        List<RSSModel> rssModels = rssModelsManager.getRssModels(
+                ids.get("aggregator"), ids.get("provider"), productClass);
 
         // Response
         ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
@@ -129,14 +120,13 @@ public class RSSModelService {
     public Response createRSSModel(RSSModel rssModel) throws Exception {
         RSSModelService.logger.debug("Into createRSSModel method");
         // check security
-        RSUser user = userManager.getCurrentUser();
+        Map<String, String> ids = this.userManager.getAllowedIds(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), "RS models");
 
-        // Validate that the user can create a RS model for the given aggregator
-        if (!userManager.isAdmin() &&
-                !rssModel.getAggregatorId().equals(user.getEmail())) {
-            String[] args = {"You are not allowed to create a RS model for the given aggregatorId"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        //Override RS models fields with the effective aggregator and provider
+        rssModel.setAggregatorId(ids.get("aggregator"));
+        rssModel.setOwnerProviderId(ids.get("provider"));
+
         // Call service
         RSSModel model = rssModelsManager.createRssModel(rssModel);
         // Building response
@@ -159,14 +149,12 @@ public class RSSModelService {
     public Response modifyRSSModel(RSSModel rssModel) throws Exception {
         RSSModelService.logger.debug("Into modifyRSSModel method");
 
-        RSUser user = userManager.getCurrentUser();
+        Map<String, String> ids = this.userManager.getAllowedIds(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), "RS models");
 
-        // Validate that the user can modify a RS model for the given aggregator
-        if (!userManager.isAdmin() &&
-                !rssModel.getAggregatorId().equals(user.getEmail())) {
-            String[] args = {"You are not allowed to create a RS model for the given aggregatorId"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        //Override RS models fields with the effective aggregator and provider
+        rssModel.setAggregatorId(ids.get("aggregator"));
+        rssModel.setOwnerProviderId(ids.get("provider"));
 
         // Call service
         RSSModel model = rssModelsManager.updateRssModel(rssModel);
@@ -195,22 +183,12 @@ public class RSSModelService {
         @QueryParam("productClass") String productClass) throws Exception {
         RSSModelService.logger.debug("Into deleteRSSModel method");
         // check security
-        RSUser user = userManager.getCurrentUser();
-        String effectiveAggregator;
+        Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, appProvider, "RS models");
 
-        if (userManager.isAdmin()) {
-            effectiveAggregator = aggregatorId;
-        } else if (null == aggregatorId || aggregatorId.equals(user.getEmail())){
-            effectiveAggregator = user.getEmail();
-        } else {
-            String[] args = {"You are not allowed to remove RS Models for the given aggregator"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
         // Call service
-        rssModelsManager.deleteRssModel(effectiveAggregator, appProvider, productClass);
+        rssModelsManager.deleteRssModel(ids.get("aggregator"), ids.get("provider"), productClass);
         // Building response
-        ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
+        ResponseBuilder rb = Response.status(Response.Status.NO_CONTENT.getStatusCode());
         return rb.build();
     }
-
 }
