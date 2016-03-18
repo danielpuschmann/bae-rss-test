@@ -120,7 +120,7 @@ public class RSSModelService {
     public Response createRSSModel(RSSModel rssModel) throws Exception {
         RSSModelService.logger.debug("Into createRSSModel method");
         // check security
-        Map<String, String> ids = this.userManager.getAllowedIds(
+        Map<String, String> ids = this.userManager.getAllowedIdsSingleProvider(
                 rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), "RS models");
 
         //Override RS models fields with the effective aggregator and provider
@@ -149,7 +149,7 @@ public class RSSModelService {
     public Response modifyRSSModel(RSSModel rssModel) throws Exception {
         RSSModelService.logger.debug("Into modifyRSSModel method");
 
-        Map<String, String> ids = this.userManager.getAllowedIds(
+        Map<String, String> ids = this.userManager.getAllowedIdsSingleProvider(
                 rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), "RS models");
 
         //Override RS models fields with the effective aggregator and provider
@@ -183,7 +183,8 @@ public class RSSModelService {
         @QueryParam("productClass") String productClass) throws Exception {
         RSSModelService.logger.debug("Into deleteRSSModel method");
         // check security
-        Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, appProvider, "RS models");
+        Map<String, String> ids = this.userManager.getAllowedIdsSingleProvider(
+                aggregatorId, appProvider, "RS models");
 
         // Call service
         rssModelsManager.deleteRssModel(ids.get("aggregator"), ids.get("provider"), productClass);

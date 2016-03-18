@@ -65,6 +65,7 @@ public class RSSModelServiceTest {
         ids.put("provider", this.provider);
 
         when(this.userManager.getAllowedIds(null, null, "RS models")).thenReturn(ids);
+        when(this.userManager.getAllowedIdsSingleProvider(null, null, "RS models")).thenReturn(ids);
     }
 
     @Test

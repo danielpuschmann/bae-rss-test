@@ -251,4 +251,59 @@ public class UserManagerTest {
                 this.aggregatorId, this.providerId,
                 "You are not allowed to manage transactions of the specified provider");
     }
+
+    private void testGetAllowedIdsSingleProvider(
+            String effectiveAggregator, String effectiveProvider, String aggregator,
+            String provider) throws RSSException{
+
+        Map<String, String> result = this.userManager.getAllowedIdsSingleProvider(aggregator, provider, "transactions");
+
+        assertEquals(effectiveAggregator, result.get("aggregator"));
+        assertEquals(effectiveProvider, result.get("provider"));
+    }
+
+    @Test
+    public void getAllowedIdsSingleProviderAdminUser () throws RSSException {
+        this.mockUserRoles("admin");
+
+        Aggregator defaultAggregator = new Aggregator();
+        defaultAggregator.setAggregatorId(this.user.getEmail());
+
+        when(aggregatorManager.getDefaultAggregator()).thenReturn(defaultAggregator);
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.user.getEmail());
+        provider.setProviderId(this.providerId);
+        this.user.setId(this.providerId);
+
+        when(providerManager.getProvider(this.user.getEmail(), this.providerId)).thenReturn(provider);
+
+        this.testGetAllowedIdsSingleProvider(this.user.getEmail(), this.providerId, null, null);
+    }
+
+    @Test
+    public void getAllowedIdsSingleProviderAggregatorUser () throws RSSException {
+        this.mockUserRoles("aggregator");
+
+        RSSProvider provider = new RSSProvider();
+        provider.setAggregatorId(this.aggregatorId);
+        provider.setProviderId(this.user.getId());
+        this.user.setEmail(this.aggregatorId);
+
+        when(providerManager.getProvider(this.aggregatorId, this.user.getId())).thenReturn(provider);
+
+        this.testGetAllowedIdsSingleProvider(this.aggregatorId, this.providerId, this.aggregatorId, this.providerId);
+    }
+
+    @Test
+    public void throwExceptionGetAllowedIdsSingleProviderNoRoles() throws Exception {
+        this.mockUserRoles();
+        try {
+            this.userManager.getAllowedIdsSingleProvider(this.aggregatorId, this.providerId, "transactions");
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: You are not allowed to manage transactions", e.getMessage());
+        }
+    }
 }

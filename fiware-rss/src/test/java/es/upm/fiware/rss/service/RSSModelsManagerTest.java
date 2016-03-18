@@ -42,7 +42,6 @@ import es.upm.fiware.rss.model.SetRevenueShareConfId;
 import es.upm.fiware.rss.model.SharingReport;
 import es.upm.fiware.rss.model.StakeholderModel;
 import java.math.BigDecimal;
-import java.util.AbstractSet;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;

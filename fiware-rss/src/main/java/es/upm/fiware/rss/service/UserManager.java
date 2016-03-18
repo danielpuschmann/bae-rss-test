@@ -125,10 +125,61 @@ public class UserManager {
                 oauthProperties.getProperty("config.sellerRole"));
     }
 
+    private String getEffectiveAggregator(String aggregatorId, String relatedModel) throws RSSException{
+        String effectiveAggregator = aggregatorId;
+        if (aggregatorId == null) {
+            // Extract the default aggregator if required
+            Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
+
+            if  (defaultAggregator == null) {
+                String[] args = {"There isn't any aggregator registered"};
+                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+            }
+
+            effectiveAggregator = defaultAggregator.getAggregatorId();
+        }
+
+        // Validate if the user has permissions to retrieve transactions from 
+        // the effective aggregator
+        if (!this.isAdmin() && (!this.isAggregator()
+                || !this.getCurrentUser().getEmail().equalsIgnoreCase(effectiveAggregator))
+                && !this.isSeller()) {
+
+            String[] args = {"You are not allowed to manage " + relatedModel +" of the specified aggregator"};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
+
+        return effectiveAggregator;
+    }
+
+    private String getEffectiveProvider(
+            String effectiveAggregator, String providerId, String relatedModel) throws RSSException {
+
+        String effectiveProvider = providerId;
+        RSSProvider provider = this.providerManager.getProvider(
+                    effectiveAggregator, this.getCurrentUser().getId());
+
+        if (provider == null) {
+            String[] args = {"You do not have a provider profile, please contact with the administrator"};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
+
+        // Get the effective provider
+        if (providerId == null) {
+            effectiveProvider = provider.getProviderId();
+        } else if (!this.isAggregator() && !provider.getProviderId().equals(providerId)) {
+            String[] args = {"You are not allowed to manage " + relatedModel +" of the specified provider"};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
+
+        return effectiveProvider;
+    }
+
     /**
-     * Checks the basic permissions of the current user to retrieve objects
+     * Checks the basic permissions of the current user to manage objects
      * identified by an aggregatorId and a providerId. it returns the effective
-     * aggregatorId and providerId to be used to access the database.
+     * aggregatorId and providerId to be used to access the database, or null
+     * if the user has permission to retrieve all the related objects.
      * 
      * If the user has the admin role he wiil be able to retieve all the existing objects
      *
@@ -145,7 +196,7 @@ public class UserManager {
      * 
      * @param aggregatorId Id of the expect aggregator or null
      * @param providerId Id of the expected provider or null
-     * @param relatedModel Identifies the type of object that will be retrieved
+     * @param relatedModel Identifies the type of object that will be managed
      * @return a Map containing the effective aggregatorId and providerId to be used to access the database
      * identified by the 'provider' and 'aggregator' keys
      * @throws RSSException If the user has not permission to access to the requested aggregator and provider
@@ -163,50 +214,48 @@ public class UserManager {
         // Get the effective aggregator
         String effectiveAggregator = aggregatorId;
         String effectiveProvider = providerId;
-        if (!this.isAdmin()) {
-            if (aggregatorId == null) {
-                // Extract the default aggregator if required
-                Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
-
-                if  (defaultAggregator == null) {
-                    String[] args = {"There isn't any aggregator registered"};
-                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-                }
-
-                effectiveAggregator = defaultAggregator.getAggregatorId();
-            }
-
-            // Validate if the user has permissions to retrieve transactions from 
-            // the effective aggregator
-            RSSProvider provider = this.providerManager.getProvider(
-                    effectiveAggregator, this.getCurrentUser().getId());
-
-            if ((!this.isAggregator()
-                    || !this.getCurrentUser().getEmail().equalsIgnoreCase(effectiveAggregator))
-                    && !this.isSeller()) {
-
-                String[] args = {"You are not allowed to manage " + relatedModel +" of the specified aggregator"};
-                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-            }
+        if (!this.isAdmin()) {            
+            effectiveAggregator = this.getEffectiveAggregator(aggregatorId, relatedModel);
 
             if (!this.isAggregator()) {
-                if (provider == null) {
-                    String[] args = {"You do not have a provider profile, please contact with the administrator"};
-                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-                }
-                // Get the effective provider
-                if (providerId == null) {
-                    effectiveProvider = provider.getProviderId();
-                } else if (!provider.getProviderId().equals(providerId)) {
-                    String[] args = {"You are not allowed to manage " + relatedModel +" of the specified provider"};
-                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-                }
+                effectiveProvider = this.getEffectiveProvider(effectiveAggregator, providerId, relatedModel);
             }
         }
 
         result.put("provider", effectiveProvider);
         result.put("aggregator", effectiveAggregator);
 
+        return result;
+    }
+
+    /**
+     * Checks the basic permissions of the current user to manage objects
+     * identified by an aggregatorId and a providerId. It returns the effective
+     * aggregatorId and providerId identifing a concerete provider.
+     * 
+     * If the provided aggregatorId is null the default one is returned
+     * If the provided providerId is null the user one is returned
+     * 
+     * @param aggregatorId Id of the expected aggregator or null
+     * @param providerId Id of the expected provider or null
+     * @param relatedModel Identifies the type of object that will be managed
+     * @return a Map containing the effective aggregatorId and providerId to be used to access the database
+     * identified by the 'provider' and 'aggregator' keys
+     * @throws RSSException If the user has not permission to access to the requested aggregator and provider
+     */
+    public Map<String, String> getAllowedIdsSingleProvider(
+            String aggregatorId, String providerId, String relatedModel) throws RSSException {
+
+        Map<String, String> result = new HashMap<>();
+
+        if (!this.isAdmin() && !this.isAggregator() && !this.isSeller()) {
+            String[] args = {"You are not allowed to manage " + relatedModel};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
+
+        String effectiveAggregator = this.getEffectiveAggregator(aggregatorId, relatedModel);
+        result.put("aggregator", effectiveAggregator);
+        result.put("provider", this.getEffectiveProvider(effectiveAggregator, providerId, relatedModel));
         return result;
     }
 }
