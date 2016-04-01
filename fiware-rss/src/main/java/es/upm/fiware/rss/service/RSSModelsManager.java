@@ -206,6 +206,11 @@ public class RSSModelsManager {
 
         // Build database model for RS Model
         SetRevenueShareConf model = this.buildRSModel(rssModel);
+
+        if (model.getStakeholders() == null) {
+            model.setStakeholders(new HashSet<>());
+        }
+
         Set<SetRevenueShareConf> models = model.getId().getModelOwner().getModels();
 
         if (null == models) {
@@ -222,9 +227,9 @@ public class RSSModelsManager {
             throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
         }
         // Save model provider relationships for stakeholders
-        for(ModelProvider st: model.getStakeholders()) {
+        model.getStakeholders().stream().forEach((st) -> {
             this.modelProviderDao.create(st);
-        }
+        });
         // return model
         return rssModel;
     }
