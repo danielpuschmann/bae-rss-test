@@ -160,22 +160,8 @@ public class ProviderServiceTest {
     }
 
     @Test
-    public void throwRSSExceptionNoRoles () throws Exception {
-        this.testGetProvidersException(
-                this.provider.getAggregatorId(), "You are not allowed to retrieve providers");
-    }
-
-    @Test
     public void throwRSSExceptionMissingAggregators () throws Exception {
-        when(this.userManager.isAggregator()).thenReturn(true);
         this.testGetProvidersException(
                 null, "There isn't any aggregator registered");
-    }
-
-    @Test
-    public void throwRSSExceptionAggregatorNotAllowed() throws Exception {
-        when(this.userManager.isAggregator()).thenReturn(true);
-        this.testGetProvidersException(
-                this.provider.getAggregatorId(), "You are not allowed to get the providers of the given aggregator");
     }
 }

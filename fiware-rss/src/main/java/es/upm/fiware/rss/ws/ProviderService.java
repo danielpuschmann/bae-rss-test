@@ -104,26 +104,14 @@ public class ProviderService {
         RSUser user = userManager.getCurrentUser();
         String effectiveAggregator = aggregatorId;
 
-        if (!userManager.isAdmin()) {
-            if (!userManager.isAggregator()) {
-                String[] args = {"You are not allowed to retrieve providers"};
+        if (!userManager.isAdmin() && aggregatorId == null) {
+            Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
+
+            if (defaultAggregator == null) {
+                String[] args = {"There isn't any aggregator registered"};
                 throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
             }
-
-            if (aggregatorId == null) {
-                Aggregator defaultAggregator = this.aggregatorManager.getDefaultAggregator();
-
-                if (defaultAggregator == null) {
-                    String[] args = {"There isn't any aggregator registered"};
-                    throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-                }
-                effectiveAggregator = defaultAggregator.getAggregatorId();
-            }
-
-            if (!user.getEmail().equals(effectiveAggregator)) {
-                String[] args = {"You are not allowed to get the providers of the given aggregator"};
-                throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-            }
+            effectiveAggregator = defaultAggregator.getAggregatorId();
         }
 
         List<RSSProvider> providers = providerManager.getAPIProviders(effectiveAggregator);
