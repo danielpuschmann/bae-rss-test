@@ -122,9 +122,9 @@ public class RSSModelsManager {
 
         // convert result to api model.
         if (null != result && !result.isEmpty()) {
-            for (SetRevenueShareConf model : result) {
+            result.stream().forEach((model) -> {
                 models.add(convertIntoApiModel(model));
-            }
+            });
         }
         return models;
     }
@@ -138,6 +138,29 @@ public class RSSModelsManager {
         id.setModelOwner(provider);
         id.setProductClass(rssModel.getProductClass());
         return id;
+    }
+
+    private Set<ModelProvider> buildStakeholdersModel(RSSModel rssModel, SetRevenueShareConf model) {
+        Set<ModelProvider> stakeholders =  new HashSet<>();
+
+        rssModel.getStakeholders().stream().map((stakeholderModel) -> {
+            DbeAppProvider stakeholder = this.appProviderDao.
+                    getProvider(rssModel.getAggregatorId(), stakeholderModel.getStakeholderId());
+            // Build stakeholder id
+            ModelProviderId stModelId = new ModelProviderId();
+            stModelId.setStakeholder(stakeholder);
+            stModelId.setModel(model);
+            // Build stakeholder
+            ModelProvider stModel = new ModelProvider();
+            stModel.setId(stModelId);
+            stModel.setModelValue(stakeholderModel.getModelValue());
+            return stModel;
+        }).forEach((stModel) -> {
+            // Add stakeholder to the set
+            stakeholders.add(stModel);
+        });
+
+        return stakeholders;
     }
 
     private SetRevenueShareConf fillRSModelInfo(RSSModel rssModel,
@@ -155,25 +178,7 @@ public class RSSModelsManager {
 
         // Set stakeholders
         if (rssModel.getStakeholders() != null) {
-            Set<ModelProvider> stakeholders = new HashSet<>();
-
-            for (StakeholderModel stakeholderModel: rssModel.getStakeholders()) {
-                DbeAppProvider stakeholder = this.appProviderDao.
-                        getProvider(rssModel.getAggregatorId(), stakeholderModel.getStakeholderId());
-
-                // Build stakeholder id
-                ModelProviderId stModelId = new ModelProviderId();
-                stModelId.setStakeholder(stakeholder);
-                stModelId.setModel(model);
-
-                // Build stakeholder
-                ModelProvider stModel = new ModelProvider();
-                stModel.setId(stModelId);
-                stModel.setModelValue(stakeholderModel.getModelValue());
-
-                // Add stakeholder to the set
-                stakeholders.add(stModel);
-            }
+            Set<ModelProvider> stakeholders = this.buildStakeholdersModel(rssModel, model);
 
             model.setStakeholders(stakeholders);
         }
@@ -204,6 +209,15 @@ public class RSSModelsManager {
         // check valid rssModel
         checkValidRSSModel(rssModel);
 
+        List <SetRevenueShareConf> prevModels = this.revenueShareConfDao
+                .getRevenueModelsByParameters(
+                        rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
+
+        if (prevModels != null && prevModels.size() > 0) {
+            String[] args = {"A model with the same Product Class already exists"};
+            throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
+        }
+
         // Build database model for RS Model
         SetRevenueShareConf model = this.buildRSModel(rssModel);
 
@@ -220,12 +234,8 @@ public class RSSModelsManager {
 
         // Persist models in the database
         // Save new RS model into database
-        try {
-            this.revenueShareConfDao.create(model);
-        } catch (org.hibernate.NonUniqueObjectException e) {
-            String[] args = {"A model with the same Product Class already exists"};
-            throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
-        }
+        this.revenueShareConfDao.create(model);
+
         // Save model provider relationships for stakeholders
         model.getStakeholders().stream().forEach((st) -> {
             this.modelProviderDao.create(st);
@@ -252,13 +262,25 @@ public class RSSModelsManager {
 
         // Check if the model does not exists
         if (null == model) {
-            String[] args = {"Non existing Rss Model."};
+            String[] args = {"RSS Model"};
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
         }
+
+        // Update stakeholders
+        Set<ModelProvider> oldSt = model.getStakeholders();
+        model.setStakeholders(null);
+
+        oldSt.stream().forEach((st) -> {
+            this.modelProviderDao.delete(st);
+        });
 
         // Save model into database
         revenueShareConfDao.update(this.fillRSModelInfo(rssModel, model));
 
+        // Save model provider relationships for stakeholders
+        model.getStakeholders().stream().forEach((st) -> {
+            this.modelProviderDao.create(st);
+        });
         // return model
         return rssModel;
     }
@@ -276,8 +298,8 @@ public class RSSModelsManager {
 
         // check valid appProvider
         if (null == aggregatorId || aggregatorId.trim().isEmpty()) {
-            String[] args = {"aggregatorId."};
-            throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
+            String[] args = {"aggregatorId"};
+            throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
 
         if (appProviderId != null && !appProviderId.trim().isEmpty()) {
@@ -288,17 +310,19 @@ public class RSSModelsManager {
         List<SetRevenueShareConf> result = revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
             appProviderId, productClass);
 
-        // Remeve models
+        // Remove models
         if (null != result && !result.isEmpty()) {
-            for (SetRevenueShareConf model : result) {
+            result.stream().map((model) -> {
                 // Remove Stakeholders
                 if (null != model.getStakeholders()) {
-                    for (ModelProvider st: model.getStakeholders()) {
+                    model.getStakeholders().stream().forEach((st) -> {
                         modelProviderDao.delete(st);
-                    }
+                    });
                 }
+                return model;
+            }).forEach((model) -> {
                 revenueShareConfDao.delete(model);
-            }
+            });
         }
     }
 
@@ -315,29 +339,22 @@ public class RSSModelsManager {
 
         DbeAppProvider provider = appProviderDao.getProvider(aggregatorId, appProviderId);
         if (null == provider) {
-            String[] args = {"Non existing: appProviderId"};
+            String[] args = {"provider"};
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
-        }
-
-        // Check that the given aggregator id is the provider one
-        if (!provider.getId().getAggregator().getTxEmail().equalsIgnoreCase(aggregatorId)) {
-            String[] args = {"The provider " + appProviderId + 
-                    " does not belong to the store owned by " + aggregatorId };
-            throw new RSSException(UNICAExceptionType.INVALID_PARAMETER, args);
         }
     }
 
     private void checkField (String field, String name) throws RSSException{
         if (null == field || field.isEmpty()) {
-            String[] args = {"Required parameters not found: " + name};
-            throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
+            String[] args = {name};
+            throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
     }
 
     private void checkNumberField(BigDecimal number, String name) throws RSSException{
         if (null == number) {
-            String[] args = {"Required parameters not found: " + name};
-            throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
+            String[] args = {name};
+            throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
     }
 
@@ -409,12 +426,14 @@ public class RSSModelsManager {
         // Fill stakeholders list
         List<StakeholderModel> stakeholdersList = new ArrayList<>();
 
-        for (ModelProvider stk: model.getStakeholders()) {
+        model.getStakeholders().stream().map((stk) -> {
             StakeholderModel stModel = new StakeholderModel();
             stModel.setStakeholderId(stk.getStakeholder().getId().getTxAppProviderId());
             stModel.setModelValue(stk.getModelValue());
+            return stModel;
+        }).forEach((stModel) -> {
             stakeholdersList.add(stModel);
-        }
+        });
         rssModel.setStakeholders(stakeholdersList);
         return rssModel;
     }

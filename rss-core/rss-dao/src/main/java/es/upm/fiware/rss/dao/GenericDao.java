@@ -42,7 +42,7 @@ public abstract interface GenericDao<DomainObject, PK extends Serializable> {
      *            PK object.
      * @return T object.
      */
-    DomainObject getById(PK id);
+    public DomainObject getById(PK id);
 
     public void flush();
 
