@@ -214,12 +214,12 @@ public class UserManager {
         // Get the effective aggregator
         String effectiveAggregator = aggregatorId;
         String effectiveProvider = providerId;
-        if (!this.isAdmin()) {            
+        if (!this.isAdmin() || providerId != null) {
             effectiveAggregator = this.getEffectiveAggregator(aggregatorId, relatedModel);
+        }
 
-            if (!this.isAggregator()) {
-                effectiveProvider = this.getEffectiveProvider(effectiveAggregator, providerId, relatedModel);
-            }
+        if (!this.isAdmin() && !this.isAggregator()) {
+            effectiveProvider = this.getEffectiveProvider(effectiveAggregator, providerId, relatedModel);
         }
 
         result.put("provider", effectiveProvider);
