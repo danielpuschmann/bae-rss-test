@@ -82,7 +82,7 @@ public class SettlementService {
 
         // Validate task URL
         if(!this.isValidURL(task.getCallbackUrl())) {
-            String[] args = {"Invalid callbackUrl"};
+            String[] args = {"callbackUrl"};
             throw new RSSException(UNICAExceptionType.CONTENT_NOT_WELL_FORMED, args);
         }
         
@@ -103,7 +103,6 @@ public class SettlementService {
             throws Exception {
    
         // Check basic permissions
-        RSUser user = this.userManager.getCurrentUser();
         Map<String, String> ids = this.userManager.getAllowedIds(
                 aggregatorId, providerId, "RS reports");
 
