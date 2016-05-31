@@ -40,6 +40,7 @@ import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
+import java.util.Map;
 
 /**
  *
@@ -104,18 +105,12 @@ public class SettlementService {
    
         // Check basic permissions
         RSUser user = this.userManager.getCurrentUser();
-        String effectiveAggregator;
+        Map<String, String> ids = this.userManager.getAllowedIds(
+                aggregatorId, providerId, "RS reports");
 
-        if (userManager.isAdmin()) {
-            effectiveAggregator = aggregatorId;
-        } else if (null == aggregatorId || aggregatorId.equals(user.getEmail())){
-            effectiveAggregator = user.getEmail();
-        } else {
-            String[] args = {"You are not allowed to retrieve report files for the given parameters"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        List<RSSReport> files = settlementManager.getSharingReports(
+                ids.get("aggregator"), ids.get("provider"), productClass);
 
-        List<RSSReport> files = settlementManager.getSharingReports(effectiveAggregator, providerId, productClass);
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(files);
         return rb.build();
