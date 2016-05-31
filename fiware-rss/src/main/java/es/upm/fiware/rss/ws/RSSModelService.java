@@ -87,7 +87,7 @@ public class RSSModelService {
     @WebMethod
     @GET
     @Path("/")
-    public Response getRssModels(@QueryParam("appProviderId") String appProvider,
+    public Response getRssModels(@QueryParam("providerId") String appProvider,
         @QueryParam("productClass") String productClass,
         @QueryParam("aggregatorId") String aggregatorId)
         throws Exception {
@@ -179,7 +179,7 @@ public class RSSModelService {
     @Consumes("application/json")
     public Response deleteRSSModel(
         @QueryParam("aggregatorId") String aggregatorId,
-        @QueryParam("appProviderId") String appProvider,
+        @QueryParam("providerId") String appProvider,
         @QueryParam("productClass") String productClass) throws Exception {
         RSSModelService.logger.debug("Into deleteRSSModel method");
         // check security
