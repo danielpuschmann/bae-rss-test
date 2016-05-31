@@ -73,13 +73,12 @@ public class SettlementService {
     public Response launchSettlement(SettlementJob task) throws Exception {
 
         // Check basic permissions
-        RSUser user = this.userManager.getCurrentUser();
-        if (!this.userManager.isAdmin() &&
-                (task.getAggregatorId() == null || !user.getEmail().equalsIgnoreCase(task.getAggregatorId()))) {
+        Map<String, String> ids = this.userManager.getAllowedIdsSingleProvider(
+                task.getAggregatorId(), task.getProviderId(), "launch settlement");
 
-            String[] args = {"You are not allowed to launch the settlement process for the given parameters"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        //Override RS models fields with the effective aggregator and provider
+        task.setAggregatorId(ids.get("aggregator"));
+        task.setProviderId(ids.get("provider"));
 
         // Validate task URL
         if(!this.isValidURL(task.getCallbackUrl())) {
