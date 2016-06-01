@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016 CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,7 +29,7 @@ import java.util.List;
  *
  * @author fdelavega
  */
-public class FixedPercentageProcessor implements AlgorithmProcessor{
+public class FixedPercentageProcessor implements AlgorithmProcessor {
 
     private void validatePercent(BigDecimal value) throws RSSException{
         if (value.compareTo(BigDecimal.ZERO) <= 0) {
@@ -41,6 +41,16 @@ public class FixedPercentageProcessor implements AlgorithmProcessor{
         }
     }
 
+    /**
+     * Validates the RS Model according to the fixed percentage distribution
+     * algorithm.
+     * 
+     * Percentages must be greather than 0 and lower than 100.
+     * The total accumulated percentage must be equal to 100
+     * 
+     * @param model RSSModel to be validated
+     * @throws RSSException if the model is not valid
+     */
     @Override
     public void validateModel(RSSModel model) throws RSSException{
         BigDecimal accumulatedValue;
@@ -62,7 +72,7 @@ public class FixedPercentageProcessor implements AlgorithmProcessor{
          // Check that the total percentage is equal to 100
         if (accumulatedValue.compareTo(new BigDecimal("100")) != 0) {
             String[] args = {"The fixed percentage algorithm requires percentage values in the RS model to equals 100%, Current value: " + accumulatedValue };
-            throw new RSSException(UNICAExceptionType.INVALID_PARAMETER, args);
+            throw new RSSException(UNICAExceptionType.INVALID_INPUT_VALUE, args);
         }
     }
 
@@ -70,6 +80,18 @@ public class FixedPercentageProcessor implements AlgorithmProcessor{
         return value.multiply(perc).divide(new BigDecimal("100"));
     }
 
+    /**
+     * Calculates the distribution of revenues according to a revenue sharing
+     * model and a total amount using the fixed percentage algorithm.
+     * 
+     * @param model Revenue sharing model to be used
+     * @param value Total amount ot be distributed
+     * 
+     * @return RSSModel with the total amount divided according to the RSSModel
+     * povided
+     * 
+     * @throws RSSException 
+     */
     @Override
     public RSSModel calculateRevenue(RSSModel model, BigDecimal value) throws RSSException {
         RSSModel result = new RSSModel();
@@ -88,17 +110,19 @@ public class FixedPercentageProcessor implements AlgorithmProcessor{
         // Calculate stakeholders value
         List<StakeholderModel> stRev = new ArrayList<>();
 
-        for(StakeholderModel st: model.getStakeholders()) {
-            StakeholderModel m = new StakeholderModel();
-            m.setStakeholderId(st.getStakeholderId());
-            m.setModelValue(this.calculatePercentage(value, st.getModelValue()));
-            stRev.add(m);
+        if (model.getStakeholders() != null) {
+            model.getStakeholders().stream().map((st) -> {
+                StakeholderModel m = new StakeholderModel();
+                m.setStakeholderId(st.getStakeholderId());
+                m.setModelValue(this.calculatePercentage(value, st.getModelValue()));
+                return m;
+            }).forEach((m) -> {
+                stRev.add(m);
+            });
         }
 
         result.setStakeholders(stRev);
 
         return result;
     }
-
-    
 }
