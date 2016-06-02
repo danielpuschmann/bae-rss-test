@@ -89,7 +89,7 @@ public class CdrsService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCDRs(@QueryParam("aggregatorId") String aggregatorId,
-            @QueryParam("appProviderId") String providerId) throws Exception {
+            @QueryParam("providerId") String providerId) throws Exception {
 
         logger.debug("getCDRs GET start");
 
