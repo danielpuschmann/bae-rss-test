@@ -40,6 +40,7 @@ import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
+import java.util.Map;
 
 /**
  *
@@ -72,17 +73,16 @@ public class SettlementService {
     public Response launchSettlement(SettlementJob task) throws Exception {
 
         // Check basic permissions
-        RSUser user = this.userManager.getCurrentUser();
-        if (!this.userManager.isAdmin() &&
-                (task.getAggregatorId() == null || !user.getEmail().equalsIgnoreCase(task.getAggregatorId()))) {
+        Map<String, String> ids = this.userManager.getAllowedIdsSingleProvider(
+                task.getAggregatorId(), task.getProviderId(), "launch settlement");
 
-            String[] args = {"You are not allowed to launch the settlement process for the given parameters"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        //Override RS models fields with the effective aggregator and provider
+        task.setAggregatorId(ids.get("aggregator"));
+        task.setProviderId(ids.get("provider"));
 
         // Validate task URL
         if(!this.isValidURL(task.getCallbackUrl())) {
-            String[] args = {"Invalid callbackUrl"};
+            String[] args = {"callbackUrl"};
             throw new RSSException(UNICAExceptionType.CONTENT_NOT_WELL_FORMED, args);
         }
         
@@ -103,19 +103,12 @@ public class SettlementService {
             throws Exception {
    
         // Check basic permissions
-        RSUser user = this.userManager.getCurrentUser();
-        String effectiveAggregator;
+        Map<String, String> ids = this.userManager.getAllowedIds(
+                aggregatorId, providerId, "RS reports");
 
-        if (userManager.isAdmin()) {
-            effectiveAggregator = aggregatorId;
-        } else if (null == aggregatorId || aggregatorId.equals(user.getEmail())){
-            effectiveAggregator = user.getEmail();
-        } else {
-            String[] args = {"You are not allowed to retrieve report files for the given parameters"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        List<RSSReport> files = settlementManager.getSharingReports(
+                ids.get("aggregator"), ids.get("provider"), productClass);
 
-        List<RSSReport> files = settlementManager.getSharingReports(effectiveAggregator, providerId, productClass);
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(files);
         return rb.build();

@@ -47,7 +47,7 @@ public class ModelProvider implements Serializable{
         this.id = id;
     }
 
-    @Column(name = "PROVIDER_MODEL_VALUE", nullable = false, precision = 5, scale = 0)
+    @Column(name = "PROVIDER_MODEL_VALUE", nullable = false, precision = 8, scale = 4)
     public BigDecimal getModelValue() {
         return this.modelValue;
     }

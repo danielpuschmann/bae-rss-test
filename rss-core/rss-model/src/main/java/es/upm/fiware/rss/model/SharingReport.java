@@ -3,7 +3,7 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  * 
- * Copyright (C) 2015 CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016 CoNWeT Lab., Universidad Politécnica de Madrid
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -143,7 +143,7 @@ public class SharingReport implements Serializable {
         this.owner = owner;
     }
 
-    @Column(name = "AGGREGATOR_VALUE", nullable = false, precision = 5, scale = 0)
+    @Column(name = "AGGREGATOR_VALUE", nullable = false, precision = 8, scale = 4)
     public BigDecimal getAggregatorValue() {
         return this.aggregatorValue;
     }
@@ -152,7 +152,7 @@ public class SharingReport implements Serializable {
         this.aggregatorValue = aggregatorValue;
     }
 
-    @Column(name = "OWNER_VALUE", nullable = false, precision = 5, scale = 0)
+    @Column(name = "OWNER_VALUE", nullable = false, precision = 8, scale = 4)
     public BigDecimal getOwnerValue() {
         return this.ownerValue;
     }

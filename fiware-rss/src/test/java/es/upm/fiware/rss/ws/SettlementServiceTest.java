@@ -16,28 +16,39 @@
  */
 package es.upm.fiware.rss.ws;
 
-import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.RSSReport;
+import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
-import java.util.MissingFormatArgumentException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 
-/**
- *
- * @author jortiz
- */
+
 public class SettlementServiceTest {
 
     @Mock SettlementManager settlementManager;
     @Mock UserManager userManager;
     @InjectMocks SettlementService toTest;
+
+    private final String aggregatorId = "aggregator@mail.com";
+    private final String providerId = "provider";
+    private final String effectiveProvider = "provider2";
+
+    private Map<String, String> ids = new HashMap<>();
+    private SettlementJob task = new SettlementJob();
 
     public SettlementServiceTest() {
     }
@@ -45,58 +56,67 @@ public class SettlementServiceTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-    }
 
-    /*@Test
-    public void launchSettlementTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String productClass = "productClass";
+        ids.put("aggregator", aggregatorId);
+        ids.put("provider", effectiveProvider);
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(true);
-
-        Response response = toTest.launchSettlement(aggregatorId, providerId, productClass);
-
-        Assert.assertEquals(202, response.getStatus());
+        task.setAggregatorId(aggregatorId);
+        task.setProviderId(providerId);
+        task.setProductClass("productClass");
+        task.setCallbackUrl("http://google.com");
     }
 
     @Test
-    public void launchSettlementNotAdminTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String productClass = "productClass";
+    public void correctlyExecuteSettlementWithValidTask() throws Exception {
+        when(userManager.getAllowedIdsSingleProvider(
+                aggregatorId, providerId, "launch settlement")).thenReturn(ids);
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(aggregatorId);
+        Response response = toTest.launchSettlement(task);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
+        Assert.assertEquals(
+                Response.Status.ACCEPTED.getStatusCode(), response.getStatus());
 
-        Response response = toTest.launchSettlement(aggregatorId, providerId, productClass);
+        Assert.assertEquals(effectiveProvider, task.getProviderId());
 
-        Assert.assertEquals(202, response.getStatus());
+        verify(settlementManager).runSettlement(task);
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
-    public void launchSettlementNotAllowedTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
+    public void throwsRSSExceptionInvalidUrl() throws Exception {
+        task.setCallbackUrl("invalid");
+
+        try {
+            toTest.launchSettlement(task);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(
+                    UNICAExceptionType.CONTENT_NOT_WELL_FORMED,
+                    e.getExceptionType());
+
+            Assert.assertEquals(
+                    "Parser Error: callbackUrl content not well formed",
+                    e.getMessage());
+        }
+    }
+
+    @Test
+    public void reportsRetrieved() throws Exception {
+        List<RSSReport> expResult = new ArrayList<>();
         String productClass = "productClass";
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
+        when(userManager.getAllowedIds(
+                aggregatorId, providerId, "launch settlement")).thenReturn(ids);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
+        when(settlementManager.getSharingReports(
+                aggregatorId, effectiveProvider, productClass)).thenReturn(expResult);
 
-        Response response = toTest.launchSettlement(aggregatorId, providerId, productClass);
-    }*/
+        Response response = toTest.getReports(
+                aggregatorId, providerId, productClass);
+
+        Assert.assertEquals(
+                Response.Status.OK.getStatusCode(), response.getStatus());
+
+        List<RSSReport> resp = (List<RSSReport>) response.getEntity();
+        Assert.assertEquals(expResult, resp);
+    }
 }
