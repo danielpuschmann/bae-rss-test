@@ -21,30 +21,27 @@
 
 package es.upm.fiware.rss.service;
 
-import java.util.List;
-
-import org.junit.Before;
-import org.junit.Test;
 import es.upm.fiware.rss.dao.DbeTransactionDao;
+import es.upm.fiware.rss.dao.SharingReportDao;
 import es.upm.fiware.rss.exception.RSSException;
-import es.upm.fiware.rss.model.Aggregator;
-import es.upm.fiware.rss.model.DbeTransaction;
-import es.upm.fiware.rss.model.RSSModel;
-import es.upm.fiware.rss.model.RSSProvider;
-import es.upm.fiware.rss.model.SettlementJob;
+import es.upm.fiware.rss.model.*;
 import es.upm.fiware.rss.settlement.ProductSettlementTask;
 import es.upm.fiware.rss.settlement.SettlementTaskFactory;
 import es.upm.fiware.rss.settlement.ThreadPoolManager;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.LinkedList;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.isA;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import static org.mockito.Mockito.*;
 
 public class SettlementManagerTest {
 
@@ -54,6 +51,7 @@ public class SettlementManagerTest {
     @Mock private ProviderManager providerManager;
     @Mock private RSSModelsManager modelsManager;
     @Mock private ThreadPoolManager poolManager;
+    @Mock private SharingReportDao sharingReportDao;
     @InjectMocks private SettlementManager toTest;
 
     private String aggregatorId;
@@ -266,6 +264,83 @@ public class SettlementManagerTest {
         }
 
         verify(poolManager).closeTaskPool(callbackUrl);
+    }
+
+    private SharingReport mockSharingReport(int id, boolean paid) {
+        BmCurrency curr = Mockito.mock(BmCurrency.class);
+        when(curr.getTxIso4217Code()).thenReturn("EUR");
+
+        DbeAggregator aggr = Mockito.mock(DbeAggregator.class);
+        when(aggr.getTxEmail()).thenReturn(aggregatorId);
+
+        DbeAppProviderId provId = Mockito.mock(DbeAppProviderId.class);
+        when(provId.getAggregator()).thenReturn(aggr);
+        when(provId.getTxAppProviderId()).thenReturn(providerId);
+
+        DbeAppProvider provider = Mockito.mock(DbeAppProvider.class);
+        when(provider.getId()).thenReturn(provId);
+
+        SharingReport report = Mockito.mock(SharingReport.class);
+        when(report.getId()).thenReturn(id);
+
+        when(report.getOwner()).thenReturn(provider);
+
+        when(report.getAggregatorValue()).thenReturn(new BigDecimal(0.3));
+        when(report.getAlgorithmType()).thenReturn("FIXED_PERCENTAGE");
+        when(report.getCurrency()).thenReturn(curr);
+        when(report.getOwnerValue()).thenReturn(new BigDecimal(0.7));
+        when(report.getProductClass()).thenReturn(productClass);
+        when(report.getDate()).thenReturn(new Date());
+        when(report.getPaid()).thenReturn(paid);
+        return report;
+    }
+
+    private List<SharingReport> generateReports(int paid, int notpaid) {
+        if (paid < 0 || notpaid < 0) {
+            return new ArrayList<>();
+        }
+
+        return IntStream.range(0, paid + notpaid).mapToObj(id -> {
+            return mockSharingReport(id, id + 1 <= paid);
+        }).collect(Collectors.toList());
+    }
+
+    @Test
+    public void testGetSharingReportsEmpty() {
+        Optional<List<SharingReport>> sreports1 = Optional.empty();
+        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, true, 0, -1))
+                .thenReturn(sreports1);
+
+        List<RSSReport> reports1 = toTest.getSharingReports(aggregatorId, providerId, productClass, true, 0, -1);
+
+        Assert.assertEquals(0, reports1.size());
+    }
+
+    @Test public void testGetReports() {
+        List<SharingReport> sharingReportList = generateReports(1, 1);
+        Optional<List<SharingReport>> sharingReportListOpt = Optional.of(sharingReportList);
+        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, true, 0, -1))
+                .thenReturn(sharingReportListOpt);
+
+        List<RSSReport> rssReportsList = toTest.getSharingReports(aggregatorId, providerId, productClass, true, 0, -1);
+        Assert.assertEquals(2, rssReportsList.size());
+
+        IntStream.range(0, 2).forEach(i -> {
+            RSSReport rss = rssReportsList.get(i);
+
+            Assert.assertEquals(rss.getId(), i);
+            Assert.assertEquals(rss.getAggregatorId(), aggregatorId);
+            Assert.assertEquals(rss.getAggregatorValue(), new BigDecimal(0.3));
+            Assert.assertEquals(rss.getOwnerProviderId(), providerId);
+            Assert.assertEquals(rss.getOwnerValue(), new BigDecimal(0.7));
+
+            Assert.assertEquals(rss.getAlgorithmType(), "FIXED_PERCENTAGE");
+            Assert.assertEquals(rss.getCurrency(), "EUR");
+
+            Assert.assertEquals(rss.getProductClass(), productClass);
+            Assert.assertTrue(rss.getTimestamp().before(new Date()));
+            Assert.assertEquals(rss.getPaid(), i < 1);
+        });
     }
 
     @Test

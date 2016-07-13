@@ -108,10 +108,10 @@ public class SettlementServiceTest {
                 aggregatorId, providerId, "launch settlement")).thenReturn(ids);
 
         when(settlementManager.getSharingReports(
-                aggregatorId, effectiveProvider, productClass)).thenReturn(expResult);
+                aggregatorId, effectiveProvider, productClass, true, 0, -1)).thenReturn(expResult);
 
         Response response = toTest.getReports(
-                aggregatorId, providerId, productClass);
+                aggregatorId, providerId, productClass, true, 0, -1);
 
         Assert.assertEquals(
                 Response.Status.OK.getStatusCode(), response.getStatus());

@@ -2,19 +2,19 @@
  * Revenue Settlement and Sharing System GE
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
- * 
+ *
  * Copyright (C) 2015 - 2016 CoNWeT Lab., Universidad Politécnica de Madrid
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
@@ -65,6 +65,8 @@ public class SharingReport implements Serializable {
     // including its sharing value
     private Set<ReportProvider> stakeholders;
 
+	private boolean paid;
+
     /**
      * Constructor.
      */
@@ -73,7 +75,7 @@ public class SharingReport implements Serializable {
 
     /**
      * Constructor.
-     * 
+     *
      * @param id
      * @param algorithmType
      * @param owner
@@ -83,16 +85,38 @@ public class SharingReport implements Serializable {
      * @param aggregatorPerc
      */
     public SharingReport(Integer id, String algorithmType,
-            DbeAppProvider owner, BigDecimal aggregatorValue,
-            BigDecimal ownerValue, Set<ReportProvider> stakeholders,BigDecimal aggregatorPerc) {
+                         DbeAppProvider owner, BigDecimal aggregatorValue,
+                         BigDecimal ownerValue, Set<ReportProvider> stakeholders,
+                         BigDecimal aggregatorPerc) {
 
-        this.id = id;
-        this.algorithmType = algorithmType;
-        this.owner = owner;
-        this.aggregatorValue = aggregatorValue;
-        this.ownerValue = ownerValue;
-        this.stakeholders = stakeholders;
+      this(id, algorithmType, owner, aggregatorValue, ownerValue, stakeholders, aggregatorPerc, false);
     }
+
+  /**
+   * Constructor.
+   *
+   * @param id
+   * @param algorithmType
+   * @param owner
+   * @param aggregatorValue
+   * @param ownerValue
+   * @param stakeholders
+   * @param aggregatorPerc
+   * @param paid
+   */
+  public SharingReport(Integer id, String algorithmType,
+                       DbeAppProvider owner, BigDecimal aggregatorValue,
+                       BigDecimal ownerValue, Set<ReportProvider> stakeholders,
+                       BigDecimal aggregatorPerc, boolean paid) {
+
+    this.id = id;
+    this.algorithmType = algorithmType;
+    this.owner = owner;
+    this.aggregatorValue = aggregatorValue;
+    this.ownerValue = ownerValue;
+    this.stakeholders = stakeholders;
+    this.paid = paid;
+  }
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
@@ -160,6 +184,15 @@ public class SharingReport implements Serializable {
     public void setOwnerValue(BigDecimal ownerValue) {
         this.ownerValue = ownerValue;
     }
+
+	@Column(name = "PAID")
+	public boolean getPaid() {
+		return this.paid;
+	}
+
+	public void setPaid(boolean paid) {
+		this.paid = paid;
+	}
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "TIME_STAMP", length = 7)

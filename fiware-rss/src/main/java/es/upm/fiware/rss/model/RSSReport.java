@@ -5,12 +5,12 @@
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
@@ -23,6 +23,7 @@ import java.util.List;
 
 public class RSSReport {
 
+	private int id;
     private String ownerProviderId;
     private BigDecimal ownerValue;
     private String productClass;
@@ -32,6 +33,17 @@ public class RSSReport {
     private Date timestamp;
     private String currency;
     private List<StakeholderModel> stakeholders;
+
+
+    private boolean paid;
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
 
     public String getOwnerProviderId() {
         return ownerProviderId;
@@ -105,5 +117,7 @@ public class RSSReport {
         this.currency = currency;
     }
 
-    
+    public boolean getPaid() { return paid; }
+
+    public void setPaid(boolean paid) { this.paid = paid; }
 }

@@ -9,12 +9,12 @@
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
@@ -24,11 +24,8 @@ package es.upm.fiware.rss.service;
 import es.upm.fiware.rss.dao.CurrencyDao;
 import es.upm.fiware.rss.dao.DbeAppProviderDao;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,12 +65,12 @@ public class SettlementManager {
     private final Logger logger = LoggerFactory.getLogger(SettlementManager.class);
 
     /**
-     * 
+     *
      */
     @Autowired
     private DbeTransactionDao transactionDao;
 
-    @Autowired 
+    @Autowired
     private DbeAppProviderDao appProviderDao;
 
     @Autowired
@@ -100,7 +97,7 @@ public class SettlementManager {
     @Autowired
     private ThreadPoolManager poolManager;
 
-    private List<Aggregator> getAggregators(String aggregatorId)  
+    private List<Aggregator> getAggregators(String aggregatorId)
             throws RSSException{
 
         // Get given aggregators if needed
@@ -114,7 +111,7 @@ public class SettlementManager {
         return aggregators;
     }
 
-    private List<RSSProvider> getProviders(String aggregatorId,
+	private List<RSSProvider> getProviders(String aggregatorId,
             String providerId) throws RSSException {
 
         List<RSSProvider> providers;
@@ -136,7 +133,7 @@ public class SettlementManager {
 
     /**
      * Launch settlement process.
-     * 
+     *
      * @param job
      * @throws RSSException
      */
@@ -190,10 +187,10 @@ public class SettlementManager {
     }
 
     /**
-     * 
+     *
      * @param transactions
      * @param state
-     * @param toFlush 
+     * @param toFlush
      */
     public void setTxState(List<DbeTransaction> transactions,
             String state, boolean toFlush) {
@@ -209,7 +206,7 @@ public class SettlementManager {
     }
 
     public void generateReport(RSSModel sharingRes, String curr) throws IOException {
-        this.logger.info("Generating report: " 
+        this.logger.info("Generating report: "
                     + sharingRes.getAggregatorId() + " "
                     + sharingRes.getOwnerProviderId() + " "
                     + sharingRes.getProductClass());
@@ -221,6 +218,7 @@ public class SettlementManager {
         report.setDate(new Date());
         report.setAggregatorValue(sharingRes.getAggregatorValue());
         report.setOwnerValue(sharingRes.getOwnerValue());
+        report.setPaid(false);
 
         // Get provider object
         report.setOwner(this.appProviderDao.getProvider(
@@ -273,50 +271,52 @@ public class SettlementManager {
 
     /**
      * Get the generated sharing reports filtered by some parameters.
-     * 
+     *
      * @param aggregator, aggregator of the returned sharing reports
-     * @param provider, porvider of the returned sharing reports
-     * @param productClass, Product class of the returned sharing reports 
+     * @param provider, provider of the returned sharing reports
+     * @param productClass, Product class of the returned sharing reports
      * @return
      */
     public List<RSSReport> getSharingReports(
-            String aggregator, String provider, String productClass) {
+            String aggregator, String provider, String productClass, boolean all, int offset, int size) {
         logger.debug("Into getSettlementFiles method.");
 
         // Get reports
-        List<SharingReport> dbReports = this.sharingReportDao.
-                getSharingReportsByParameters(aggregator, provider, productClass);
+        Optional<List<SharingReport>> dbReports = this.sharingReportDao.
+                getSharingReportsByParameters(aggregator, provider, productClass, all, offset, size);
 
-        List<RSSReport> reports = new ArrayList<>();
+        return dbReports.map(s ->
+                s.stream().map(rp -> {
+                    RSSReport rep = new RSSReport();
+                    rep.setId(rp.getId());
+                    rep.setAggregatorId(rp.getOwner().getId().getAggregator().getTxEmail());
+                    rep.setAggregatorValue(rp.getAggregatorValue());
 
-        // Build API format
-        if (dbReports != null) {
-            for (SharingReport rp: dbReports) {
-                RSSReport rep = new RSSReport();
-                rep.setAggregatorId(rp.getOwner().getId().getAggregator().getTxEmail());
-                rep.setAggregatorValue(rp.getAggregatorValue());
+                    rep.setAlgorithmType(rp.getAlgorithmType());
+                    rep.setCurrency(rp.getCurrency().getTxIso4217Code());
+                    rep.setOwnerProviderId(rp.getOwner().getId().getTxAppProviderId());
+                    rep.setOwnerValue(rp.getOwnerValue());
+                    rep.setProductClass(rp.getProductClass());
+                    rep.setTimestamp(rp.getDate());
+                    rep.setPaid(rp.getPaid());
 
-                rep.setAlgorithmType(rp.getAlgorithmType());
-                rep.setCurrency(rp.getCurrency().getTxIso4217Code());
-                rep.setOwnerProviderId(rp.getOwner().getId().getTxAppProviderId());
-                rep.setOwnerValue(rp.getOwnerValue());
-                rep.setProductClass(rp.getProductClass());
-                rep.setTimestamp(rp.getDate());
+                    // Set stakeholders
+                    List<StakeholderModel> st = rp.getStakeholders().stream()
+                            .map(rPro -> {
+                                StakeholderModel stakeholder = new StakeholderModel();
+                                stakeholder.setStakeholderId(rPro.getStakeholder().getId().getTxAppProviderId());
+                                stakeholder.setModelValue(rPro.getModelValue());
+                                return stakeholder;
+                            }).collect(Collectors.toList());
 
-                // Set stakeholders
-                Set<ReportProvider> stakeholders = rp.getStakeholders();
-                List<StakeholderModel> st = new ArrayList<>();
+                    rep.setStakeholders(st);
+                    return rep;
+                })
+                .collect(Collectors.toList()))
+                .orElse(Collections.emptyList());
+    }
 
-                for (ReportProvider rPro: stakeholders) {
-                    StakeholderModel stakeholder = new StakeholderModel();
-                    stakeholder.setStakeholderId(rPro.getStakeholder().getId().getTxAppProviderId());
-                    stakeholder.setModelValue(rPro.getModelValue());
-                    st.add(stakeholder);
-                }
-                rep.setStakeholders(st);
-                reports.add(rep);
-            }
-        }
-        return reports;
+    public Optional<Boolean> setPayReport(int id, Boolean pay) {
+        return this.sharingReportDao.setReportPay(id, pay);
     }
 }
