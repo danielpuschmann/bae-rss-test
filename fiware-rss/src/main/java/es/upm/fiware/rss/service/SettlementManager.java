@@ -21,38 +21,22 @@
 
 package es.upm.fiware.rss.service;
 
-import es.upm.fiware.rss.dao.CurrencyDao;
-import es.upm.fiware.rss.dao.DbeAppProviderDao;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-
+import es.upm.fiware.rss.dao.*;
+import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.*;
+import es.upm.fiware.rss.settlement.ProductSettlementTask;
+import es.upm.fiware.rss.settlement.SettlementTaskFactory;
+import es.upm.fiware.rss.settlement.ThreadPoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import es.upm.fiware.rss.dao.DbeTransactionDao;
-import es.upm.fiware.rss.dao.ReportProviderDao;
-import es.upm.fiware.rss.dao.SharingReportDao;
-import es.upm.fiware.rss.exception.RSSException;
-import es.upm.fiware.rss.exception.UNICAExceptionType;
-import es.upm.fiware.rss.model.Aggregator;
-import es.upm.fiware.rss.model.BmCurrency;
-import es.upm.fiware.rss.model.DbeAppProvider;
-import es.upm.fiware.rss.model.DbeTransaction;
-import es.upm.fiware.rss.model.RSSModel;
-import es.upm.fiware.rss.model.RSSProvider;
-import es.upm.fiware.rss.model.RSSReport;
-import es.upm.fiware.rss.model.ReportProvider;
-import es.upm.fiware.rss.model.ReportProviderId;
-import es.upm.fiware.rss.model.SettlementJob;
-import es.upm.fiware.rss.model.SharingReport;
-import es.upm.fiware.rss.model.StakeholderModel;
-import es.upm.fiware.rss.settlement.ProductSettlementTask;
-import es.upm.fiware.rss.settlement.SettlementTaskFactory;
-import es.upm.fiware.rss.settlement.ThreadPoolManager;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -111,7 +95,7 @@ public class SettlementManager {
         return aggregators;
     }
 
-	private List<RSSProvider> getProviders(String aggregatorId,
+    private List<RSSProvider> getProviders(String aggregatorId,
             String providerId) throws RSSException {
 
         List<RSSProvider> providers;
@@ -278,12 +262,12 @@ public class SettlementManager {
      * @return
      */
     public List<RSSReport> getSharingReports(
-            String aggregator, String provider, String productClass, boolean all, int offset, int size) {
+            String aggregator, String provider, String productClass, boolean onlyPaid, int offset, int size) {
         logger.debug("Into getSettlementFiles method.");
 
         // Get reports
         Optional<List<SharingReport>> dbReports = this.sharingReportDao.
-                getSharingReportsByParameters(aggregator, provider, productClass, all, offset, size);
+                getSharingReportsByParameters(aggregator, provider, productClass, onlyPaid, offset, size);
 
         return dbReports.map(s ->
                 s.stream().map(rp -> {
@@ -298,7 +282,7 @@ public class SettlementManager {
                     rep.setOwnerValue(rp.getOwnerValue());
                     rep.setProductClass(rp.getProductClass());
                     rep.setTimestamp(rp.getDate());
-                    rep.setPaid(rp.getPaid());
+                    rep.setPaid(rp.isPaid());
 
                     // Set stakeholders
                     List<StakeholderModel> st = rp.getStakeholders().stream()
@@ -317,6 +301,11 @@ public class SettlementManager {
     }
 
     public Optional<Boolean> setPayReport(int id, Boolean pay) {
-        return this.sharingReportDao.setReportPay(id, pay);
+        try {
+            this.sharingReportDao.getById(id).setPaid(pay);
+            return Optional.of(true);
+        } catch (Exception e){
+            return Optional.empty();
+        }
     }
 }

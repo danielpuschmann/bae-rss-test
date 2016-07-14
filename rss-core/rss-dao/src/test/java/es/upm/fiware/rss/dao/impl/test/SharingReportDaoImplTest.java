@@ -1,7 +1,23 @@
+/**
+ * Copyright (C) 2016 CoNWeT Lab., Universidad Politécnica de Madrid
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package es.upm.fiware.rss.dao.impl.test;
 
 import es.upm.fiware.rss.dao.impl.SharingReportDaoImpl;
-import es.upm.fiware.rss.exception.InterfaceExceptionType;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.junit.Test;
@@ -11,7 +27,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -51,69 +66,69 @@ public class SharingReportDaoImplTest {
     @Test
     public void testNoAggNoProvNoProd() throws Exception {
         String expected = "from SharingReport l order by l.id desc";
-        executeTest(null, null, null, true, 0, -1, expected);
-        executeTest("", "", "", true, 0, -1, expected);
-        executeTest(null, "provider", null, true, 0, -1, expected);
-        executeTest(null, null, "product", true, 0, -1, expected);
-        executeTest(null, "provider", "product", true, 0, -1, expected);
+        executeTest(null, null, null, false, 0, -1, expected);
+        executeTest("", "", "", false, 0, -1, expected);
+        executeTest(null, "provider", null, false, 0, -1, expected);
+        executeTest(null, null, "product", false, 0, -1, expected);
+        executeTest(null, "provider", "product", false, 0, -1, expected);
     }
 
     @Test
     public void testAggNoProvNoProd() throws Exception {
         String expected = "from SharingReport l where l.owner.id.aggregator.txEmail= 'a@b.c' order by l.id desc";
-        executeTest("a@b.c", null, null, true, 0, -1, expected);
-        executeTest("a@b.c", null, "product", true, 0, -1, expected);
+        executeTest("a@b.c", null, null, false, 0, -1, expected);
+        executeTest("a@b.c", null, "product", false, 0, -1, expected);
     }
 
     @Test
     public void testAggProvNoProd() throws Exception {
         String expected = "from SharingReport l where l.owner.id.aggregator.txEmail= 'a@b.c' and l.owner.id.txAppProviderId= 'provider' order by l.id desc";
-        executeTest("a@b.c", "provider", null, true, 0, -1, expected);
+        executeTest("a@b.c", "provider", null, false, 0, -1, expected);
     }
 
     @Test
     public void testAggProvProd() throws Exception {
         String expected = "from SharingReport l where l.owner.id.aggregator.txEmail= 'a@b.c' and l.owner.id.txAppProviderId= 'provider' and l.productClass= 'product' order by l.id desc";
-        executeTest("a@b.c", "provider", "product", true, 0, -1, expected);
+        executeTest("a@b.c", "provider", "product", false, 0, -1, expected);
     }
 
     @Test
-    public void testFilterNotPaid() throws Exception {
+    public void testFilterOnlyPaid() throws Exception {
         String expected = "from SharingReport l where (l.paid is null or l.paid = false) order by l.id desc";
-        executeTest(null, null, null, false, 0, -1, expected);
+        executeTest(null, null, null, true, 0, -1, expected);
 
         expected = "from SharingReport l where (l.paid is null or l.paid = false) and l.owner.id.aggregator.txEmail= 'a@b.c' order by l.id desc";
-        executeTest("a@b.c", null, null, false, 0, -1, expected);
+        executeTest("a@b.c", null, null, true, 0, -1, expected);
 
         expected = "from SharingReport l where (l.paid is null or l.paid = false) and l.owner.id.aggregator.txEmail= 'a@b.c' and l.owner.id.txAppProviderId= 'provider' order by l.id desc";
-        executeTest("a@b.c", "provider", null, false, 0, -1, expected);
+        executeTest("a@b.c", "provider", null, true, 0, -1, expected);
 
         expected = "from SharingReport l where (l.paid is null or l.paid = false) and l.owner.id.aggregator.txEmail= 'a@b.c' and l.owner.id.txAppProviderId= 'provider' and l.productClass= 'product' order by l.id desc";
-        executeTest("a@b.c", "provider", "product", false, 0, -1, expected);
+        executeTest("a@b.c", "provider", "product", true, 0, -1, expected);
     }
 
     @Test
     public void testOffset() throws Exception {
         String expected = "from SharingReport l order by l.id desc";
-        executeTest(null, null, null, true, 0, -1, expected);
-        executeTest(null, null, null, true, 12, -1, expected);
-        executeTest(null, null, null, true, 50, -1, expected);
-        executeTest(null, null, null, true, -1, -1, expected);
+        executeTest(null, null, null, false, 0, -1, expected);
+        executeTest(null, null, null, false, 12, -1, expected);
+        executeTest(null, null, null, false, 50, -1, expected);
+        executeTest(null, null, null, false, -1, -1, expected);
 
-        executeTest(null, null, null, true, Integer.MIN_VALUE, -1, expected);
-        executeTest(null, null, null, true, Integer.MAX_VALUE, -1, expected);
+        executeTest(null, null, null, false, Integer.MIN_VALUE, -1, expected);
+        executeTest(null, null, null, false, Integer.MAX_VALUE, -1, expected);
     }
 
     @Test
     public void testSize() throws Exception {
         String expected = "from SharingReport l order by l.id desc";
-        executeTest(null, null, null, true, 0, 0, expected);
-        executeTest(null, null, null, true, 0, 12, expected);
-        executeTest(null, null, null, true, 0, 50, expected);
-        executeTest(null, null, null, true, 0, -1, expected);
+        executeTest(null, null, null, false, 0, 0, expected);
+        executeTest(null, null, null, false, 0, 12, expected);
+        executeTest(null, null, null, false, 0, 50, expected);
+        executeTest(null, null, null, false, 0, -1, expected);
 
-        executeTest(null, null, null, true, 0, Integer.MIN_VALUE, expected);
-        executeTest(null, null, null, true, 0, Integer.MAX_VALUE, expected);
+        executeTest(null, null, null, false, 0, Integer.MIN_VALUE, expected);
+        executeTest(null, null, null, false, 0, Integer.MAX_VALUE, expected);
     }
 
 }

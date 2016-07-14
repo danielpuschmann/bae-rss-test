@@ -16,28 +16,25 @@
  */
 package es.upm.fiware.rss.ws;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.List;
-
-import javax.jws.WebMethod;
-import javax.jws.WebService;
-import javax.ws.rs.*;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.MediaType;
-
 import es.upm.fiware.rss.controller.JsonResponse;
-import es.upm.fiware.rss.ws.patch.PATCH;
-import es.upm.fiware.rss.ws.patch.PatchAction;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.RSSReport;
 import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
+import es.upm.fiware.rss.ws.patch.PATCH;
+import es.upm.fiware.rss.ws.patch.PatchAction;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.jws.WebMethod;
+import javax.jws.WebService;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -129,7 +126,7 @@ public class SettlementService {
             @QueryParam("aggregatorId") String aggregatorId,
             @QueryParam("providerId") String providerId,
             @QueryParam("productClass") String productClass,
-            @DefaultValue("true") @QueryParam("all") boolean all,
+            @DefaultValue("false") @QueryParam("onlyPaid") boolean onlyPaid,
             @DefaultValue("0") @QueryParam("offset") int offset,
             @DefaultValue("-1") @QueryParam("size") int size)
             throws Exception {
@@ -139,7 +136,7 @@ public class SettlementService {
                 aggregatorId, providerId, "RS reports");
 
         List<RSSReport> files = settlementManager.getSharingReports(
-                ids.get("aggregator"), ids.get("provider"), productClass, all, offset, size);
+                ids.get("aggregator"), ids.get("provider"), productClass, onlyPaid, offset, size);
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(files);

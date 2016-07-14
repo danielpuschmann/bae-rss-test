@@ -37,13 +37,9 @@ public class RSSReport {
 
     private boolean paid;
 
-	public int getId() {
-		return id;
-	}
+	public int getId() { return id; }
 
-	public void setId(int id) {
-		this.id = id;
-	}
+	public void setId(int id) { this.id = id; }
 
     public String getOwnerProviderId() {
         return ownerProviderId;
@@ -117,7 +113,7 @@ public class RSSReport {
         this.currency = currency;
     }
 
-    public boolean getPaid() { return paid; }
+    public boolean isPaid() { return paid; }
 
     public void setPaid(boolean paid) { this.paid = paid; }
 }

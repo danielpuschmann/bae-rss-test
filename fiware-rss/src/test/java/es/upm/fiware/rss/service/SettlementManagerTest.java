@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
@@ -267,31 +266,28 @@ public class SettlementManagerTest {
     }
 
     private SharingReport mockSharingReport(int id, boolean paid) {
-        BmCurrency curr = Mockito.mock(BmCurrency.class);
-        when(curr.getTxIso4217Code()).thenReturn("EUR");
+        BmCurrency curr = new BmCurrency();
+        curr.setTxIso4217Code("EUR");
 
-        DbeAggregator aggr = Mockito.mock(DbeAggregator.class);
-        when(aggr.getTxEmail()).thenReturn(aggregatorId);
+        DbeAggregator aggr = new DbeAggregator("name", aggregatorId);
 
-        DbeAppProviderId provId = Mockito.mock(DbeAppProviderId.class);
-        when(provId.getAggregator()).thenReturn(aggr);
-        when(provId.getTxAppProviderId()).thenReturn(providerId);
+        DbeAppProviderId provId = new DbeAppProviderId();
+        provId.setAggregator(aggr);
+        provId.setTxAppProviderId(providerId);
 
-        DbeAppProvider provider = Mockito.mock(DbeAppProvider.class);
-        when(provider.getId()).thenReturn(provId);
+        DbeAppProvider provider = new DbeAppProvider(provId, "name", new HashSet<>());
 
-        SharingReport report = Mockito.mock(SharingReport.class);
-        when(report.getId()).thenReturn(id);
-
-        when(report.getOwner()).thenReturn(provider);
-
-        when(report.getAggregatorValue()).thenReturn(new BigDecimal(0.3));
-        when(report.getAlgorithmType()).thenReturn("FIXED_PERCENTAGE");
-        when(report.getCurrency()).thenReturn(curr);
-        when(report.getOwnerValue()).thenReturn(new BigDecimal(0.7));
-        when(report.getProductClass()).thenReturn(productClass);
-        when(report.getDate()).thenReturn(new Date());
-        when(report.getPaid()).thenReturn(paid);
+        SharingReport report = new SharingReport(id,
+                "FIXED_PERCENTAGE",
+                provider,
+                new BigDecimal(0.3),
+                new BigDecimal(0.7),
+                new HashSet<>(),
+                new BigDecimal(0.0),
+                paid);
+        report.setCurrency(curr);
+        report.setProductClass(productClass);
+        report.setDate(new Date());
         return report;
     }
 
@@ -308,21 +304,21 @@ public class SettlementManagerTest {
     @Test
     public void testGetSharingReportsEmpty() {
         Optional<List<SharingReport>> sreports1 = Optional.empty();
-        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, true, 0, -1))
+        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
                 .thenReturn(sreports1);
 
-        List<RSSReport> reports1 = toTest.getSharingReports(aggregatorId, providerId, productClass, true, 0, -1);
+        List<RSSReport> reports1 = toTest.getSharingReports(aggregatorId, providerId, productClass, false, 0, -1);
 
-        Assert.assertEquals(0, reports1.size());
+        Assert.assertTrue((reports1.isEmpty()));
     }
 
     @Test public void testGetReports() {
         List<SharingReport> sharingReportList = generateReports(1, 1);
         Optional<List<SharingReport>> sharingReportListOpt = Optional.of(sharingReportList);
-        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, true, 0, -1))
+        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
                 .thenReturn(sharingReportListOpt);
 
-        List<RSSReport> rssReportsList = toTest.getSharingReports(aggregatorId, providerId, productClass, true, 0, -1);
+        List<RSSReport> rssReportsList = toTest.getSharingReports(aggregatorId, providerId, productClass, false, 0, -1);
         Assert.assertEquals(2, rssReportsList.size());
 
         IntStream.range(0, 2).forEach(i -> {
@@ -339,7 +335,7 @@ public class SettlementManagerTest {
 
             Assert.assertEquals(rss.getProductClass(), productClass);
             Assert.assertTrue(rss.getTimestamp().before(new Date()));
-            Assert.assertEquals(rss.getPaid(), i < 1);
+            Assert.assertEquals(rss.isPaid(), i < 1);
         });
     }
 

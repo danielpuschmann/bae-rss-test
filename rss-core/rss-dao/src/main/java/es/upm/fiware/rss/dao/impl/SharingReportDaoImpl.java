@@ -16,17 +16,15 @@
  */
 package es.upm.fiware.rss.dao.impl;
 
-import java.util.List;
-import java.util.Optional;
-
+import es.upm.fiware.rss.dao.SharingReportDao;
+import es.upm.fiware.rss.model.SharingReport;
 import org.hibernate.Query;
-import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
-import es.upm.fiware.rss.dao.SharingReportDao;
-import es.upm.fiware.rss.model.SharingReport;
+import java.util.List;
+import java.util.Optional;
 
 
 @Repository
@@ -43,14 +41,14 @@ public class SharingReportDaoImpl extends GenericDaoImpl<SharingReport, Integer>
     }
 
     @Override
-    public Optional<List<SharingReport>> getSharingReportsByParameters(String aggregator, String providerId, String productClass, boolean all, int offset, int size) {
+    public Optional<List<SharingReport>> getSharingReportsByParameters(String aggregator, String providerId, String productClass, boolean onlyPaid, int offset, int size) {
         // Build queries
         // TODO: Use prepared strings to avoid SQLi
         String hql = "from SharingReport l";
 
         boolean first = true;
 
-        if (!all) {
+        if (onlyPaid) {
             hql += " where (l.paid is null or l.paid = false)";
             first = false;
         }
@@ -92,18 +90,4 @@ public class SharingReportDaoImpl extends GenericDaoImpl<SharingReport, Integer>
 
         return Optional.of(resultList);
     }
-
-    @Override
-    public Optional<Boolean> setReportPay(int id, boolean pay) {
-        String hql = "update SharingReport r set r.paid = :paid where r.id = :id";
-        try {
-            Session s = this.getSession();
-            int updated = s.createQuery(hql).setBoolean("paid", pay).setInteger("id", id).executeUpdate();
-            return Optional.of(updated > 0);
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
-
 }

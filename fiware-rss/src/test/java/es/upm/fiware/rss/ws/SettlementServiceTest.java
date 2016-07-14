@@ -22,19 +22,21 @@ import es.upm.fiware.rss.model.RSSReport;
 import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.mockito.MockitoAnnotations;
 
 
 public class SettlementServiceTest {
@@ -108,10 +110,10 @@ public class SettlementServiceTest {
                 aggregatorId, providerId, "launch settlement")).thenReturn(ids);
 
         when(settlementManager.getSharingReports(
-                aggregatorId, effectiveProvider, productClass, true, 0, -1)).thenReturn(expResult);
+                aggregatorId, effectiveProvider, productClass, false, 0, -1)).thenReturn(expResult);
 
         Response response = toTest.getReports(
-                aggregatorId, providerId, productClass, true, 0, -1);
+                aggregatorId, providerId, productClass, false, 0, -1);
 
         Assert.assertEquals(
                 Response.Status.OK.getStatusCode(), response.getStatus());
