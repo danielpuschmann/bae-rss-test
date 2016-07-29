@@ -66,9 +66,8 @@ public class SettlementService {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     public Response launchSettlement(SettlementJob task) throws Exception {
-
         // Check basic permissions
-        Map<String, String> ids = this.userManager.getAllowedIdsSingleProvider(
+        Map<String, String> ids = this.userManager.getAllowedIds(
                 task.getAggregatorId(), task.getProviderId(), "launch settlement");
 
         //Override RS models fields with the effective aggregator and provider
