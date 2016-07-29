@@ -88,6 +88,8 @@ public class ThreadPoolManager {
      * @param callbackUrl 
      */
     public synchronized void closeTaskPool(String callbackUrl) {
-        this.pendingTasks.get(callbackUrl).close();
+        if (this.pendingTasks.containsKey(callbackUrl)) {
+            this.pendingTasks.get(callbackUrl).close();
+        }
     }
 }
