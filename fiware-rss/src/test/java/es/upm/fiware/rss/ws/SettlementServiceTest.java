@@ -70,7 +70,7 @@ public class SettlementServiceTest {
 
     @Test
     public void correctlyExecuteSettlementWithValidTask() throws Exception {
-        when(userManager.getAllowedIdsSingleProvider(
+        when(userManager.getAllowedIds(
                 aggregatorId, providerId, "launch settlement")).thenReturn(ids);
 
         Response response = toTest.launchSettlement(task);
