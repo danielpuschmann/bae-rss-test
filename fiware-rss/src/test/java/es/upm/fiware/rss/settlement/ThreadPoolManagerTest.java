@@ -60,6 +60,7 @@ public class ThreadPoolManagerTest {
         
         this.pool = mock(TaskPool.class);
 
+        when(this.tasks.containsKey(this.callbackUrl)).thenReturn(true);
         when(this.tasks.get(eq(this.callbackUrl))).thenReturn(this.pool);
     }
 
