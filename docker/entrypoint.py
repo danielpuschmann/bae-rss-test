@@ -32,7 +32,7 @@ text = text.replace("config.callbackURL=", "config.callbackURL={}/fiware-rss/cal
 with open("/etc/default/rss/oauth.properties", "w") as f:
     f.write(text)
 
-while True:
+for i in range 0..20:
     try:
         print("Intentado conectar:.... ")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
