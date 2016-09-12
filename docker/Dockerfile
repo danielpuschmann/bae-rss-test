@@ -1,26 +1,42 @@
-FROM tomcat:7-jre7
-MAINTAINER "Francisco de la Vega <fdelavega@fi.upm.es>"
+FROM glassfish:latest
 
-ENV JAVA_HOME /usr/lib/jvm/java-7-openjdk-amd64/
+RUN apt-get update && apt-get install -y python2.7 python-pip git maven mysql-client openjdk-8-jdk
 
-RUN apt-get update && apt-get install -y git maven openjdk-7-jdk mysql-client 
+# Download the mysql connector and place it in the proper directory
+RUN wget http://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.39.tar.gz
 
-RUN git clone https://github.com/conwetlab/fiware-rss.git
+RUN tar -xvf mysql-connector-java-5.1.39.tar.gz
 
-# Use the git folder as default folder
-WORKDIR fiware-rss
+RUN cp ./mysql-connector-java-5.1.39/mysql-connector-java-5.1.39-bin.jar glassfish/domains/domain1/lib
 
-ADD ./database.properties /etc/default/rss/
-ADD ./oauth.properties /etc/default/rss/
+RUN pip install sh
 
-# Compile sources
-RUN mvn install -DskipTests=true
+RUN git clone https://github.com/FIWARE-TMForum/business-ecosystem-rss.git
 
-# Deploy war files
-RUN  cp ./fiware-rss/target/fiware-rss.war /usr/local/tomcat/webapps 
-RUN  cp ./rss-expendLimit/el-server/target/expenditureLimit.war /usr/local/tomcat/webapps
+WORKDIR business-ecosystem-rss
 
-ADD ./entrypoint.sh /
+RUN git checkout develop
 
+# Create WAR file
+
+RUN mvn install -DskipTests
+
+RUN mkdir /etc/default/rss/
+
+RUN cp ./properties/database.properties /etc/default/rss/database.properties
+
+RUN cp ./properties/oauth.properties /etc/default/rss/oauth.properties
+
+RUN sed -i 's/jdbc:mysql:\/\/localhost:3306\/RSS/jdbc:mysql:\/\/db:3306\/RSS/g' /etc/default/rss/database.properties
+
+RUN sed -i 's/database.username=root/database.username=root/g' /etc/default/rss/database.properties
+
+RUN sed -i 's/database.password=root/database.password=my-secret-pw/g' /etc/default/rss/database.properties
+
+RUN echo 'config.sellerRole=seller' >> /etc/default/rss/oauth.properties
+
+RUN echo 'config.aggregatorRole=aggregator' >> /etc/default/rss/oauth.properties
+
+COPY ./entrypoint.py /
+COPY ./entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["catalina.sh", "run"]
