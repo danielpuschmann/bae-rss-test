@@ -16,8 +16,10 @@ DBHOST = getenv("MYSQL_HOST", "db")
 DBPORT = getenv("MYSQL_PORT", "3306")
 
 text = ""
-with open("/etc/default/rss/database.properties", "rw") as f:
+with open("/etc/default/rss/database.properties") as f:
     text = f.read()
+
+with open("/etc/default/rss/database.properties", "w") as f:
 
     text.replace("database.url=jdbc:mysql://localhost:3306/RSS", "database.url=jdbc:mysql://{}:{}/RSS".format(DBHOST, DBPORT))\
         .replace("database.username=root", "database.username={}".format(DBUSER))\
