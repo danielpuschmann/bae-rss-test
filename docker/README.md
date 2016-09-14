@@ -36,7 +36,7 @@ rss:
         - MYSQL_DBUSR=root
         - MYSQL_DBPASSWORD=my-secret-pw
         - MYSQL_HOST=rss_db
-        - MYSQL_PORT=3333
+
 ```
 
 **Note**: The provided docker-compose file is using a port schema that can be easily changed modifying the file
@@ -64,8 +64,8 @@ docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=r
 Once that the database is configured, you can deploy the image by running the following command:
 
 ```
-docker run -e MYSQL_DBUSR=root -e MYSQL_DBPASSWORD=my-secret-pw -e MYSQL_HOST=rss_db -e MYSQL_PORT=3333 -p PORT:8080 --link rss_db rss
+docker run -e MYSQL_DBUSR=root -e MYSQL_DBPASSWORD=my-secret-pw -e MYSQL_HOST=rss_db -p PORT:8080 --link rss_db rss
 ```
-**Note**: You can change the values of the MySQL connection (database password, and database port), but they must be same as the used when running the MySQL container. 
+**Note**: You can change the values of the MySQL connection (database password, and database host), but they must be same as the used when running the MySQL container. 
 
 Once that you have run these commands, the RSS should be up and running in `http://YOUR_HOST:PORT/fiware-rss` replacing `YOUR_HOST` by the host of your machine and `PORT` by the port selected in the previous step. 
