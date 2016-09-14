@@ -27,16 +27,6 @@ RUN cp ./properties/database.properties /etc/default/rss/database.properties
 
 RUN cp ./properties/oauth.properties /etc/default/rss/oauth.properties
 
-RUN sed -i 's/jdbc:mysql:\/\/localhost:3306\/RSS/jdbc:mysql:\/\/db:3306\/RSS/g' /etc/default/rss/database.properties
-
-RUN sed -i 's/database.username=root/database.username=root/g' /etc/default/rss/database.properties
-
-RUN sed -i 's/database.password=root/database.password=my-secret-pw/g' /etc/default/rss/database.properties
-
-RUN echo 'config.sellerRole=seller' >> /etc/default/rss/oauth.properties
-
-RUN echo 'config.aggregatorRole=aggregator' >> /etc/default/rss/oauth.properties
-
 COPY ./entrypoint.py /
 COPY ./entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

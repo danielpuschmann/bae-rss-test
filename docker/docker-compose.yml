@@ -1,5 +1,7 @@
 db:
     image: mysql:latest
+    ports:
+        - "3333:3306"
     volumes:
         - /var/lib/mysql
     environment:
@@ -10,11 +12,12 @@ rss:
     image: rss
     ports:
         - "9999:8080"
-        - "4848:4848"
-        - "8181:8181"
+        - "4444:4848"
+        - "1111:8181"
     links:
         - db
     environment:
-        - RSS_CLIENT_ID=
-        - RSS_SECRET=
-        - RSS_URL=http://db:9999
+        - MYSQL_DBUSR=root
+        - MYSQL_DBPASSWORD=my-secret-pw
+        - MYSQL_HOST=db
+        - MYSQL_PORT=3333
