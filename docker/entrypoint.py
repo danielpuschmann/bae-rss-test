@@ -21,7 +21,7 @@ with open("/etc/default/rss/database.properties", "rw") as f:
 
     text.replace("database.url=jdbc:mysql://localhost:3306/RSS", "database.url=jdbc:mysql://{}:{}/RSS".format(DBHOST, DBPORT))\
         .replace("database.username=root", "database.username={}".format(DBUSER))\
-        .replace("database.password=root", "database.password={}".format(DBPWD))
+        .replace("database.password=root", "database.password={}".format(DBPASSWD))
 
     f.write(text)
 
