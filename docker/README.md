@@ -1,12 +1,12 @@
 # Business Ecosystem RSS Docker Image
 
-Stating on version 5.4.0, you are able to run the Business API Ecosystem with Docker. In this context, the current repository contains the Docker image of the Business Ecosystem RSS component, so you can run it stand alone. As you may know, the Business Ecosystem RSS needs a MySQL database to store some information. For this reason, you must create an additional container to run the database. You can do it automatically with `docker-compose` or manually by following the given steps.
+Starting on version 5.4.0, you are able to run the Business API Ecosystem with Docker. In this context, the current repository contains the Docker image of the Business Ecosystem RSS component, so you can run it stand alone. As you may know, the Business Ecosystem RSS needs a MySQL database to store some information. For this reason, you must create an additional container to run the database. You can do it automatically with `docker-compose` or manually by following the given steps.
 
 ## OAuth2 Authentication
 
 The Business API Ecosystem authenticates with the [FIWARE Lab identity manager](https://account.lab.fiware.org). In this regard, it is needed to register an application in this portal in order to acquire the OAuth2 credentials.
 
-The Business Ecosystem RSS itself does to need to know the credentials (Client Id and Client Secret) of the registered application, but it needs to know the name given to the created roles. The current image uses *Provider* for the admin role and *Seller* for the seller role.
+The Business Ecosystem RSS itself does not need to know the credentials (Client Id and Client Secret) of the registered application, but it needs to know the name given to the created roles. The current image uses *Provider* for the admin role and *Seller* for the seller role.
 
 ## Automatically
 
@@ -56,10 +56,8 @@ Then, the Business Ecosystem RSS should be up and running in `http://YOUR_HOST:P
 The first thing that you have to do is to create a docker container that will host the database used by the Business Ecosystem RSS. To do so, you can execute the following command:
 
 ```
-docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=rss -v /var/lib/mysql -d mysql
+docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=rss -p PORT:8080 -v /var/lib/mysql -d mysql
 ```
-
-* As can be seen, some environment variables are set in this command to set up the data base. You must **not** change these variables, since their values are the ones expected by the Business Ecosystem RSS image.
 
 ### 2) Deploying the Business Ecosystem RSS Image
 
@@ -68,5 +66,6 @@ Once that the database is configured, you can deploy the image by running the fo
 ```
 docker run -e MYSQL_DBUSR=root -e MYSQL_DBPASSWORD=my-secret-pw -e MYSQL_HOST=rss_db -e MYSQL_PORT=3333 -p PORT:8080 --link rss_db rss
 ```
+**Note**: You can change the values of the MySQL connection (database password, and database port), but they must be same as the used when running the MySQL container. 
 
 Once that you have run these commands, the RSS should be up and running in `http://YOUR_HOST:PORT/fiware-rss` replacing `YOUR_HOST` by the host of your machine and `PORT` by the port selected in the previous step. 
