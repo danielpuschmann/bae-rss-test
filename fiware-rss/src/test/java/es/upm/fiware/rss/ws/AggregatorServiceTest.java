@@ -16,16 +16,16 @@
   */
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.Aggregator;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -39,60 +39,44 @@ import org.mockito.MockitoAnnotations;
  */
 public class AggregatorServiceTest {
 
-    @Mock UserManager userManager;
-    @Mock AggregatorManager aggregatorManager;
-    @InjectMocks AggregatorService toTest;
+    private @Mock UserManager userManager;
+    private @Mock AggregatorManager aggregatorManager;
+    private @InjectMocks AggregatorService toTest;
+    
+    private Aggregator aggregator;
 
     public AggregatorServiceTest() {}
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        this.aggregator = new Aggregator();
+        this.aggregator.setAggregatorId("aggregator@mail.com");
+        this.aggregator.setAggregatorName("aggregatorName");
     }
 
     @Test
-    public void createAggregatorTest() throws Exception {
-
+    public void createAggregator() throws Exception {
         when(userManager.isAdmin()).thenReturn(true);
 
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@mail.com");
-        aggregator.setAggregatorName("aggregatorName");
-
-        Response response = toTest.createAggregator(aggregator);
+        Response response = toTest.createAggregator(this.aggregator);
 
         Assert.assertEquals(201 ,response.getStatus());
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
     public void createAggregatorNotAdminTest() throws Exception {
-
         when(userManager.isAdmin()).thenReturn(false);
-
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@mail.com");
-        aggregator.setAggregatorName("aggregatorName");
-
-        toTest.createAggregator(aggregator);
-
-        fail();
+        
+        try {
+            toTest.createAggregator(aggregator);
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: You are not allowed to create aggregators", e.getMessage());
+        }
     }
 
-    @Test
-    public void getAggregatorsTest() throws Exception {
-
-        List <Aggregator> aggregators = new LinkedList<>();
-
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@mail.com");
-        aggregator.setAggregatorName("aggregatorName");
-
-        aggregators.add(aggregator);
-
-        when(userManager.isAdmin()).thenReturn(true);
-        when(aggregatorManager.getAPIAggregators()).thenReturn(aggregators);
-
+    private void testGetAggregators(List<Aggregator> aggregators) throws Exception {
         Response response = toTest.getAggregators();
 
         Assert.assertEquals(200 ,response.getStatus());
@@ -100,24 +84,36 @@ public class AggregatorServiceTest {
     }
 
     @Test
-    public void getAggregatorsNotAdminTest() throws Exception {
+    public void getAggregatorsAdmin() throws Exception {
+        List <Aggregator> aggregators = new LinkedList<>();
+        aggregators.add(aggregator);
+        when(aggregatorManager.getAPIAggregators()).thenReturn(aggregators);
 
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId("aggregator@mail.com");
-        aggregator.setAggregatorName("aggregatorName");
+        when(userManager.isAdmin()).thenReturn(true);
+        this.testGetAggregators(aggregators);
+    }
+
+    public void getAggregatorsAggregator() throws Exception {
+        List <Aggregator> aggregators = new LinkedList<>();
+        aggregators.add(aggregator);
 
         RSUser user = new RSUser();
         user.setEmail("user@mail.com");
-
-        when(userManager.isAdmin()).thenReturn(false);
         when(userManager.getCurrentUser()).thenReturn(user);
         when(aggregatorManager.getAggregator("user@mail.com")).thenReturn(aggregator);
 
-        Response response = toTest.getAggregators();
+        when(userManager.isAggregator()).thenReturn(true);
+        this.testGetAggregators(aggregators);
+    }
 
-        Assert.assertEquals(200 ,response.getStatus());
-        List listResponse = (List) response.getEntity();
-        Assert.assertEquals(aggregator, listResponse.get(0));
+    @Test
+    public void getAggregatorsNotAllowed() throws Exception {
+        try {
+            Response response = toTest.getAggregators();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: You are not allowed to retrieve aggregators", e.getMessage());
+        }
     }
 
 }

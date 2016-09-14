@@ -1,36 +1,41 @@
 /**
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
- * 
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Affero General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.controller.JsonResponse;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.RSSReport;
-import es.upm.fiware.rss.model.RSUser;
+import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
-import java.util.List;
+import es.upm.fiware.rss.ws.patch.PATCH;
+import es.upm.fiware.rss.ws.patch.PatchAction;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import javax.jws.WebMethod;
 import javax.jws.WebService;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -46,53 +51,92 @@ public class SettlementService {
     @Autowired
     UserManager userManager;
 
+    private boolean isValidURL(String urlStr) {
+        boolean res = true;
+        try {
+            new URL(urlStr);
+        }
+        catch (MalformedURLException e) {
+            res = false;
+        }
+        return res;
+    }
+
     @WebMethod
-    @GET
-    public Response launchSettlement(
-            @QueryParam("aggregatorId") String aggregatorId,
-            @QueryParam("providerId") String providerId,
-            @QueryParam("productClass") String productClass)
-            throws Exception {
-
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response launchSettlement(SettlementJob task) throws Exception {
         // Check basic permissions
-        RSUser user = this.userManager.getCurrentUser();
-        if (!this.userManager.isAdmin() &&
-                (aggregatorId == null || !user.getEmail().equalsIgnoreCase(aggregatorId))) {
+        Map<String, String> ids = this.userManager.getAllowedIds(
+                task.getAggregatorId(), task.getProviderId(), "launch settlement");
 
-            String[] args = {"You are not allowed to launch the settlement process for the given parameters"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        //Override RS models fields with the effective aggregator and provider
+        task.setAggregatorId(ids.get("aggregator"));
+        task.setProviderId(ids.get("provider"));
+
+        // Validate task URL
+        if(!this.isValidURL(task.getCallbackUrl())) {
+            String[] args = {"callbackUrl"};
+            throw new RSSException(UNICAExceptionType.CONTENT_NOT_WELL_FORMED, args);
         }
 
         // Launch process
-        settlementManager.runSettlement(aggregatorId, providerId, productClass);
+        settlementManager.runSettlement(task);
         Response.ResponseBuilder rb = Response.status(Response.Status.ACCEPTED.getStatusCode());
+        return rb.build();
+    }
+
+    private boolean applyPatch(int id, PatchAction action) {
+        // If we need more patchs add them here, by now only replace paids
+        if (action.getPath().equals("/paid") && action.getOp().equals("replace")) {
+            return settlementManager.setPayReport(id, action.getValue().equals("true")).orElse(false);
+        }
+
+        return false;
+    }
+
+    /**
+     * PATCH based on RFC5789, where it receives a list of description of changes.
+     * We get a list of descriptions like {"op": "replace", "path": "/parameter", "value": "value"}
+     * To read more about it: http://williamdurand.fr/2014/02/14/please-do-not-patch-like-an-idiot/
+     */
+    @WebMethod
+    @PATCH
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/reports/{id}")
+    public Response patchReport(@PathParam("id") int id, List<PatchAction> actions) throws Exception {
+        Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
+        JsonResponse response = new JsonResponse();
+
+        if (this.userManager.isAdmin()) {
+            // Apply actions (First map needs lambda function because lack of partial application
+            response.setSuccess(actions.stream().map(act -> this.applyPatch(id, act)).allMatch(Boolean::booleanValue));
+        }
+        rb.entity(response);
         return rb.build();
     }
 
     @WebMethod
     @GET
-    @Produces("application/json")
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("/reports")
     public Response getReports(
             @QueryParam("aggregatorId") String aggregatorId,
             @QueryParam("providerId") String providerId,
-            @QueryParam("productClass") String productClass)
+            @QueryParam("productClass") String productClass,
+            @DefaultValue("false") @QueryParam("onlyPaid") boolean onlyPaid,
+            @DefaultValue("0") @QueryParam("offset") int offset,
+            @DefaultValue("-1") @QueryParam("size") int size)
             throws Exception {
-   
+
         // Check basic permissions
-        RSUser user = this.userManager.getCurrentUser();
-        String effectiveAggregator;
+        Map<String, String> ids = this.userManager.getAllowedIds(
+                aggregatorId, providerId, "RS reports");
 
-        if (userManager.isAdmin()) {
-            effectiveAggregator = aggregatorId;
-        } else if (null == aggregatorId || aggregatorId.equals(user.getEmail())){
-            effectiveAggregator = user.getEmail();
-        } else {
-            String[] args = {"You are not allowed to retrieve report files for the given parameters"};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
+        List<RSSReport> files = settlementManager.getSharingReports(
+                ids.get("aggregator"), ids.get("provider"), productClass, onlyPaid, offset, size);
 
-        List<RSSReport> files = settlementManager.getSharingReports(effectiveAggregator, providerId, productClass);
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(files);
         return rb.build();

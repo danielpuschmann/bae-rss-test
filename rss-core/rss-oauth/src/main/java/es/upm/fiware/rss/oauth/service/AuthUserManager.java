@@ -10,11 +10,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
-import org.pac4j.oauth.profile.JsonHelper;
 import org.springframework.stereotype.Service;
 
 import es.upm.fiware.rss.dao.DbeAggregatorDao;
@@ -78,20 +75,19 @@ public class AuthUserManager {
     /**
      * Builds a list of Revenue Sharing roles according to the roles retrieved
      * from the idm and the email of the user
-     * @param rolesNode, A JSON array containing the roles provided by the idm
+     * @param roles, A JSON array containing the roles provided by the idm
      * @param email, Email of the user
      * @return List of revenue sharing roles
      */
-    public List<Role> buildUserRoles(ArrayNode rolesNode, String email) {
+    public List<Role> buildUserRoles(String roles, String email) {
         List<Role> userRoles = new ArrayList<>();
 
         // Include idm defined roles
-        for (JsonNode node : rolesNode) {
+        for (String rawRole : roles.split(",")) {
             Role r = new Role();
-            String role = (String) JsonHelper.get(node, "name");
 
-            r.setId((String) JsonHelper.get(node, "id"));
-            r.setName(role.toLowerCase());
+            r.setId(rawRole.toLowerCase());
+            r.setName(rawRole.toLowerCase());
             userRoles.add(r);
         }
 

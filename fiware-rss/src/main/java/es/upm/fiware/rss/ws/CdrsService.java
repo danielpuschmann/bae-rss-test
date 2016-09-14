@@ -3,7 +3,7 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  *
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,9 +21,8 @@
 
 package es.upm.fiware.rss.ws;
 
-import es.upm.fiware.rss.exception.RSSException;
-import es.upm.fiware.rss.exception.UNICAExceptionType;
-import es.upm.fiware.rss.model.CDR;
+import java.util.List;
+import java.util.Map;
 
 import javax.jws.WebMethod;
 import javax.jws.WebService;
@@ -31,6 +30,10 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.GET;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.MediaType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,10 +41,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import es.upm.fiware.rss.service.CdrsManager;
 import es.upm.fiware.rss.service.UserManager;
-import java.util.List;
-import javax.ws.rs.GET;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.CDR;
 
 
 @WebService(serviceName = "cdrs", name = "cdrs")
@@ -68,9 +70,15 @@ public class CdrsService {
      */
     @WebMethod
     @POST
-    @Consumes("application/json")
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response createCdr(List<CDR> cdrs) throws Exception {
         logger.info("createCdr POST Start.");
+
+        // Validate user permissions (Sellers cannot create CDRs)
+        if (!userManager.isAdmin() && !userManager.isAggregator()) {
+            String[] args = {"You are not allowed to create transactions"};
+            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
+        }
 
         this.cdrsManager.createCDRs(cdrs);
         Response.ResponseBuilder rb = Response.status(Response.Status.CREATED.getStatusCode());
@@ -79,26 +87,15 @@ public class CdrsService {
 
     @WebMethod
     @GET
-    @Produces("application/json")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response getCDRs(@QueryParam("aggregatorId") String aggregatorId,
             @QueryParam("providerId") String providerId) throws Exception {
 
         logger.debug("getCDRs GET start");
 
-        // Validate permissions
-        if (aggregatorId != null && !this.userManager.isAdmin() && 
-                !this.userManager.getCurrentUser().getEmail().equalsIgnoreCase(aggregatorId)) {
+        Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, providerId, "transactions");
 
-            String[] args = {"You are not allowed to retrieve transactions of the Store owned by " + aggregatorId};
-            throw new RSSException(UNICAExceptionType.NON_ALLOWED_OPERATION, args);
-        }
-
-        String effectiveAggregator = aggregatorId;
-        if (!this.userManager.isAdmin()) {
-            effectiveAggregator = this.userManager.getCurrentUser().getEmail();
-        }
-
-        List<CDR> resp = this.cdrsManager.getCDRs(effectiveAggregator, providerId);
+        List<CDR> resp = this.cdrsManager.getCDRs(ids.get("aggregator"), ids.get("provider"));
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(resp);

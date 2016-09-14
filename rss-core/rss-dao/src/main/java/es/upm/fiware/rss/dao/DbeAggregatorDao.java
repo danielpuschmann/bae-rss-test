@@ -26,4 +26,7 @@ import es.upm.fiware.rss.model.DbeAggregator;
  *
  */
 public interface DbeAggregatorDao extends GenericDao<DbeAggregator, String> {
+    
+    public DbeAggregator getDefaultAggregator();
+
 }

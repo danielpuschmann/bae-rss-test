@@ -3,7 +3,7 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  *
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politénica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politénica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,7 +30,9 @@ import es.upm.fiware.rss.dao.DbeAggregatorDao;
 import es.upm.fiware.rss.dao.DbeAppProviderDao;
 import es.upm.fiware.rss.dao.ModelProviderDao;
 import es.upm.fiware.rss.dao.SetRevenueShareConfDao;
+import es.upm.fiware.rss.exception.InterfaceExceptionType;
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeAppProviderId;
@@ -39,22 +41,22 @@ import es.upm.fiware.rss.model.ModelProviderId;
 import es.upm.fiware.rss.model.RSSModel;
 import es.upm.fiware.rss.model.SetRevenueShareConf;
 import es.upm.fiware.rss.model.SetRevenueShareConfId;
-import es.upm.fiware.rss.model.SharingReport;
 import es.upm.fiware.rss.model.StakeholderModel;
 import java.math.BigDecimal;
-import java.util.AbstractSet;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 import org.junit.Assert;
 import org.junit.Before;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
+import org.mockito.Matchers;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
 
@@ -70,77 +72,17 @@ public class RSSModelsManagerTest {
     @Mock private ModelProviderDao modelProviderDao;
     @InjectMocks private RSSModelsManager toTest;
 
+    private RSSModel rssModel;
+
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-    }
 
-    @Test
-    public void checkValidAppProviderTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(aggregatorId, appProviderId)).thenReturn(provModel);
-
-        toTest.checkValidAppProvider(aggregatorId, appProviderId);
-    }
-
-    @Test
-            (expected = RSSException.class)
-    public void checkValidAppProviderRSSExceptionNonExistentResourceTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        when(appProviderDao.getProvider(aggregatorId, appProviderId)).thenReturn(null);
-
-        toTest.checkValidAppProvider(aggregatorId, appProviderId);
-    }
-
-    @Test
-            (expected = RSSException.class)
-    public void checkValidAppProviderRSSExceptionInvalidParameterTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", "other@mail.com");
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(aggregatorId, appProviderId)).thenReturn(provModel);
-
-        toTest.checkValidAppProvider(aggregatorId, appProviderId);
-    }
-
-    @Test
-    public void checkValidRSSModelTest() throws RSSException {
         String aggregatorId = "aggregator@mail.com";
         String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
+        String ownerProviderId = "provider@mail.com";
         String productClass = "productClass@mail.com";
         String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
 
         List <StakeholderModel> holdersModel = new LinkedList<>();
         StakeholderModel stakeholderModel = new StakeholderModel();
@@ -148,740 +90,499 @@ public class RSSModelsManagerTest {
         stakeholderModel.setStakeholderId(stakeholderId);
         holdersModel.add(stakeholderModel);
 
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
+        rssModel = new RSSModel();
+        rssModel.setAggregatorId(aggregatorId);
+        rssModel.setAggregatorShare(BigDecimal.valueOf(50));
+        rssModel.setAlgorithmType(algorithmType);
+        rssModel.setOwnerProviderId(ownerProviderId);
+        rssModel.setOwnerValue(BigDecimal.valueOf(30));
+        rssModel.setProductClass(productClass);
+        rssModel.setStakeholders(holdersModel);
+    }
 
+    private DbeAppProvider mockGetProvider(String aggregatorId, String providerId) {
         DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
 
         DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
         dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
+        dbeAppProviderId.setTxAppProviderId(providerId);
 
         DbeAppProvider provModel = new DbeAppProvider();
         provModel.setId(dbeAppProviderId);
         provModel.setModels(null);
         provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
+        provModel.setTxName(providerId);
         provModel.setTxTimeStamp(new Date());
 
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-
-        toTest.checkValidRSSModel(rSSModel);
+        when(appProviderDao.getProvider(aggregatorId, providerId)).thenReturn(provModel);
+        return provModel;
     }
-
+    
     @Test
-    public void checkValidRSSModel2Test() throws RSSException {
+    public void appProviderValidated () throws RSSException {
         String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
+        String providerId = "provider@mail.com";
 
-        List <StakeholderModel> holdersModel = null;
+        this.mockGetProvider(aggregatorId, providerId);
 
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType("FIXED_PERCENTAGE");
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(50));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-
-        toTest.checkValidRSSModel(rSSModel);
+        toTest.checkValidAppProvider(aggregatorId, providerId);
     }
-
+    
     @Test
-            (expected = RSSException.class)
-    public void checkValidRSSModelRSSExceptionCheckFieldNullTest() throws RSSException {
-        String aggregatorId = null;
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        List <StakeholderModel> holdersModel = null;
-
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-
-        toTest.checkValidRSSModel(rSSModel);
-    }
-
-    @Test
-            (expected = RSSException.class)
-    public void checkValidRSSModelRSSExceptionCheckFieldVoidTest() throws RSSException {
-        String aggregatorId = "";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        List <StakeholderModel> holdersModel = null;
-
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-
-        toTest.checkValidRSSModel(rSSModel);
-    }
-
-    @Test
-            (expected = RSSException.class)
-    public void checkValidRSSModelRSSExceptionCheckNumberFieldTest() throws RSSException {
+    public void throwsRSSExceptionProviderNotExists() {
         String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
+        this.mockGetProvider(aggregatorId, "provider@mail.com");
 
-        List <StakeholderModel> holdersModel = null;
-
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(null);
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-
-        toTest.checkValidRSSModel(rSSModel);
+        try {
+            toTest.checkValidAppProvider(aggregatorId, "provider1@mail.com");
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, e.getExceptionType());
+            Assert.assertEquals("Resource provider does not exist", e.getMessage());
+        }
     }
 
     @Test
-            (expected = RSSException.class)
-    public void checkValidRSSModelRSSExceptionInvalidParameterTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "aggregator@mail.com";
-        String appProviderId = "provider@mail.com";
+    public void rssModelValidated() throws RSSException {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
 
-        List <StakeholderModel> holdersModel = new LinkedList<>();
+        // Mock getProvider method for stakeholders
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(new DbeAppProvider());
+
+        toTest.checkValidRSSModel(rssModel);
+    }
+
+    private void testCheckRSSModelException(InterfaceExceptionType exceptionType, String message) {
+        try {
+            toTest.checkValidRSSModel(rssModel);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(exceptionType, e.getExceptionType());
+            Assert.assertEquals(message, e.getMessage());
+        }
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingAggregator() {
+        rssModel.setAggregatorId(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: aggregatorId");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingOwner() {
+        rssModel.setOwnerProviderId(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: ownerProviderId");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingAlgorithm() {
+        rssModel.setAlgorithmType(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: algorithmType");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingProductClass() {
+        rssModel.setAlgorithmType(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: algorithmType");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingAggregatorValue() {
+        rssModel.setAggregatorShare(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: aggregatorValue");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingOwnerValue() {
+        rssModel.setOwnerValue(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: ownerValue");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingStakeholderId() {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        rssModel.getStakeholders().get(0).setStakeholderId(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: stakeholderId");
+    }
+
+    @Test
+    public void throwsRSSExceptionMissingStakeholderValue() {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        rssModel.getStakeholders().get(0).setModelValue(null);
+        testCheckRSSModelException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, "Missing mandatory parameter: modelValue");
+    }
+
+    @Test
+    public void throwsRSSExceptionOwnerIncludedAsStakeholder() {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(new DbeAppProvider());
+
         StakeholderModel stakeholderModel = new StakeholderModel();
         stakeholderModel.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel.setStakeholderId(stakeholderId);
-        holdersModel.add(stakeholderModel);
+        stakeholderModel.setStakeholderId(rssModel.getOwnerProviderId());
+        rssModel.getStakeholders().add(stakeholderModel);
 
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-
-        toTest.checkValidRSSModel(rSSModel);
+        testCheckRSSModelException(UNICAExceptionType.INVALID_PARAMETER, "Invalid parameter: The RS model owner cannot be included as stakeholder");
     }
 
+    private SetRevenueShareConf buildDatabaseRSModel() {
 
-    @Test
-    public void convertIntoApiModelTest() {
-        String aggregatorId = "aggregator@mail.com";
-        String aggregatorName = "aggregatorName";
-        String appProviderId = "appProvider@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String stakeholderId = "stakeholderId@mail.com";
-
-        DbeAggregator dbeAggregator = new DbeAggregator(aggregatorName, aggregatorId);
+        DbeAggregator dbeAggregator = new DbeAggregator("Aggregator", rssModel.getAggregatorId());
         DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
         DbeAppProvider dbeAppProvider = new DbeAppProvider();
         SetRevenueShareConfId setRevenueShareConfId = new SetRevenueShareConfId();
-        Set <ModelProvider> stakeholders = new HashSet<ModelProvider>();
+
+        Set <ModelProvider> stakeholders = new HashSet<>();
         SetRevenueShareConf setRevenueShareConf = new SetRevenueShareConf();
+
         ModelProviderId modelProviderId = new ModelProviderId();
+        DbeAppProvider stProvider = new DbeAppProvider();
+        stProvider.setTxName("Provider");
+        modelProviderId.setStakeholder(stProvider);
+
         ModelProvider modelProvider = new ModelProvider();
 
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
+        dbeAppProviderId.setTxAppProviderId(rssModel.getOwnerProviderId());
 
         dbeAppProvider.setId(dbeAppProviderId);
 
         setRevenueShareConfId.setModelOwner(dbeAppProvider);
-        setRevenueShareConfId.setProductClass(algorithmType);
+        setRevenueShareConfId.setProductClass(rssModel.getProductClass());
 
         stakeholders.add(modelProvider);
 
         setRevenueShareConf.setAggregator(dbeAggregator);
-        setRevenueShareConf.setAggregatorValue(BigDecimal.ZERO);
-        setRevenueShareConf.setAlgorithmType(algorithmType);
+        setRevenueShareConf.setAggregatorValue(rssModel.getAggregatorValue());
+        setRevenueShareConf.setAlgorithmType(rssModel.getAlgorithmType());
         setRevenueShareConf.setId(setRevenueShareConfId);
-        setRevenueShareConf.setOwnerValue(BigDecimal.ZERO);
+        setRevenueShareConf.setOwnerValue(rssModel.getOwnerValue());
         setRevenueShareConf.setStakeholders(stakeholders);
 
         modelProvider.setId(modelProviderId);
         modelProvider.setModel(setRevenueShareConf);
-        modelProvider.setModelValue(BigDecimal.ZERO);
-        modelProvider.setStakeholder(dbeAppProvider);
+        modelProvider.setModelValue(rssModel.getStakeholders().get(0).getModelValue());
 
-        toTest.convertIntoApiModel(setRevenueShareConf);
+        DbeAppProviderId stakeholderId = new DbeAppProviderId();
+        stakeholderId.setAggregator(dbeAggregator);
+        stakeholderId.setTxAppProviderId(rssModel.getStakeholders().get(0).getStakeholderId());
+
+        DbeAppProvider stakeholder = new DbeAppProvider();
+        stakeholder.setId(stakeholderId);
+        modelProvider.setStakeholder(stakeholder);
+
+        return setRevenueShareConf;
+    }
+    
+    @Test
+    public void convertIntoApiModelTest() {
+        RSSModel model = toTest.convertIntoApiModel(this.buildDatabaseRSModel());
+
+        // Validate Model
+        Assert.assertEquals(rssModel.getAggregatorId(), model.getAggregatorId());
+        Assert.assertEquals(rssModel.getAggregatorValue(), model.getAggregatorValue());
+        Assert.assertEquals(rssModel.getAlgorithmType(), model.getAlgorithmType());
+        Assert.assertEquals(rssModel.getOwnerProviderId(), model.getOwnerProviderId());
+        Assert.assertEquals(rssModel.getOwnerValue(), model.getOwnerValue());
+        Assert.assertEquals(rssModel.getProductClass(), model.getProductClass());
+
+        // Validate stakeholders
+        Assert.assertEquals(rssModel.getStakeholders().size(), model.getStakeholders().size());
+        for (int i = 0; i < rssModel.getStakeholders().size(); i++) {
+            Assert.assertEquals(rssModel.getStakeholders().get(i).getStakeholderId(),
+                    model.getStakeholders().get(i).getStakeholderId());
+
+            Assert.assertEquals(rssModel.getStakeholders().get(i).getModelValue(),
+                    model.getStakeholders().get(i).getModelValue());
+        }
     }
 
     @Test
-    public void createRssModelTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
+    public void revenueSharingModelCorrectlyCreated() throws RSSException {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
 
-        List <StakeholderModel> holdersModel = new LinkedList<>();
-        StakeholderModel stakeholderModel = new StakeholderModel();
-        stakeholderModel.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel.setStakeholderId(stakeholderId);
-        holdersModel.add(stakeholderModel);
+        DbeAppProvider dbStakeholder = new DbeAppProvider();
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(dbStakeholder);
 
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
+        DbeAggregator dBAggregator = new DbeAggregator();
+        when(this.aggregatorDao.getById(rssModel.getAggregatorId())).thenReturn(dBAggregator);
 
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
+        RSSModel model = toTest.createRssModel(rssModel);
 
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
+        Assert.assertEquals(rssModel, model);
 
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
+        // Verify calls
+        ArgumentCaptor<SetRevenueShareConf> captor = ArgumentCaptor.forClass(SetRevenueShareConf.class);
+        verify(this.revenueShareConfDao).create(captor.capture());
 
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
+        SetRevenueShareConf dBModel = captor.getValue();
+        Assert.assertEquals(dBAggregator, dBModel.getAggregator());
+        Assert.assertEquals(rssModel.getAggregatorValue(), dBModel.getAggregatorValue());
+        Assert.assertEquals(rssModel.getAlgorithmType(), dBModel.getAlgorithmType());
+        Assert.assertEquals(rssModel.getOwnerProviderId(), dBModel.getId().getModelOwner().getId().getTxAppProviderId());
+        Assert.assertEquals(rssModel.getOwnerValue(), dBModel.getOwnerValue());
+        Assert.assertEquals(rssModel.getProductClass(), dBModel.getId().getProductClass());
 
-        toTest.createRssModel(rSSModel);
+        ArgumentCaptor<ModelProvider> stCaptor = ArgumentCaptor.forClass(ModelProvider.class);
+
+        verify(this.modelProviderDao).create(stCaptor.capture());
+        List<ModelProvider> stakeholders = stCaptor.getAllValues();
+
+        for (int i = 0; i < stakeholders.size(); i++) {
+            Assert.assertEquals(dbStakeholder, stakeholders.get(i).getStakeholder());
+
+            Assert.assertEquals(rssModel.getStakeholders().get(i).getModelValue(),
+                    stakeholders.get(i).getModelValue());
+        }
     }
 
     @Test
-            (expected = RSSException.class)
-    public void createRssModelRSSExceptionTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
+    public void throwsRSSExceptionAlreadyExistingModel() {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(new DbeAppProvider());
 
-        List <StakeholderModel> holdersModel = new LinkedList<>();
-        StakeholderModel stakeholderModel = new StakeholderModel();
-        stakeholderModel.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel.setStakeholderId(stakeholderId);
-        holdersModel.add(stakeholderModel);
+        List<SetRevenueShareConf> models = new ArrayList<>();
+        models.add(this.buildDatabaseRSModel());
 
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
+        when(this.revenueShareConfDao.getRevenueModelsByParameters(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(),
+                rssModel.getProductClass())).thenReturn(models);
 
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-        doThrow(org.hibernate.NonUniqueObjectException.class).when(revenueShareConfDao).create(any(SetRevenueShareConf.class));
-
-        toTest.createRssModel(rSSModel);
-    }
-
-
-    @Test
-    public void deleteRssModelTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        List <StakeholderModel> holdersModel = new LinkedList<>();
-        StakeholderModel stakeholderModel = new StakeholderModel();
-        stakeholderModel.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel.setStakeholderId(stakeholderId);
-        holdersModel.add(stakeholderModel);
-
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
-
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
-
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
-
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
-
-        List<SetRevenueShareConf> revenueShareConfs = new LinkedList<>();
-
-        Set<ModelProvider> stakeholders = new HashSet<>();
-        ModelProvider modelProvider = new ModelProvider();
-        stakeholders.add(modelProvider);
-
-        SetRevenueShareConf revenueShareConf = new SetRevenueShareConf();
-        revenueShareConf.setAggregator(dbeAggregator);
-        revenueShareConf.setAggregatorValue(BigDecimal.ZERO);
-        revenueShareConf.setAlgorithmType(algorithmType);
-        revenueShareConf.setId(null);
-        revenueShareConf.setOwnerValue(BigDecimal.ZERO);
-        revenueShareConf.setStakeholders(stakeholders);
-
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-                appProviderId, productClass)).thenReturn(revenueShareConfs);
-
-        toTest.deleteRssModel(aggregatorId, appProviderId, productClass);
+        try {
+            this.toTest.createRssModel(rssModel);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, e.getExceptionType());
+            Assert.assertEquals("Resource already exists: A model with the same Product Class already exists", e.getMessage());
+        }
     }
 
     @Test
-    public void deleteRssModel2Test() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProviderId = "aggregator@mail.com";
-        String productClass = "productClass@mail.com";
-        String stakeholderId = "stakeholder@mail.com";
-        String appProviderId = "provider@mail.com";
+    public void revenueSharingModelDeleted() throws Exception {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        DbeAppProvider dbStakeholder = new DbeAppProvider();
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(dbStakeholder);
 
-        List <StakeholderModel> holdersModel = new LinkedList<>();
-        StakeholderModel stakeholderModel = new StakeholderModel();
-        stakeholderModel.setModelValue(BigDecimal.valueOf(20));
-        stakeholderModel.setStakeholderId(stakeholderId);
-        holdersModel.add(stakeholderModel);
+        List<SetRevenueShareConf> models = new ArrayList<>();
+        SetRevenueShareConf dbModel = this.buildDatabaseRSModel();
+        models.add(dbModel);
 
-        RSSModel rSSModel = new RSSModel();
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProviderId);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(30));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(holdersModel);
+        when(this.revenueShareConfDao.getRevenueModelsByParameters(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(),
+                rssModel.getProductClass())).thenReturn(models);
 
-        DbeAggregator dbeAggregator = new DbeAggregator("aggegatorName", aggregatorId);
+        toTest.deleteRssModel(rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(appProviderId);
+        ArgumentCaptor<SetRevenueShareConf> captor = ArgumentCaptor.forClass(SetRevenueShareConf.class);
+        verify(this.revenueShareConfDao).delete(captor.capture());
 
-        DbeAppProvider provModel = new DbeAppProvider();
-        provModel.setId(dbeAppProviderId);
-        provModel.setModels(null);
-        provModel.setTxCorrelationNumber(Integer.MIN_VALUE);
-        provModel.setTxName(appProviderId);
-        provModel.setTxTimeStamp(new Date());
+        Assert.assertEquals(dbModel, captor.getValue());
 
-        Set<ModelProvider> stakeholders = new HashSet<>();
+        ArgumentCaptor<ModelProvider> stCaptor = ArgumentCaptor.forClass(ModelProvider.class);
 
-        SetRevenueShareConf revenueShareConf = new SetRevenueShareConf();
-        revenueShareConf.setAggregator(dbeAggregator);
-        revenueShareConf.setAggregatorValue(BigDecimal.ZERO);
-        revenueShareConf.setAlgorithmType(algorithmType);
-        revenueShareConf.setId(null);
-        revenueShareConf.setOwnerValue(BigDecimal.ZERO);
-        revenueShareConf.setStakeholders(stakeholders);
+        verify(this.modelProviderDao).delete(stCaptor.capture());
+        List<ModelProvider> stakeholders = stCaptor.getAllValues();
+        Assert.assertEquals(dbModel.getStakeholders().size(), stakeholders.size());
 
-        when(appProviderDao.getProvider(anyString(), anyString())).thenReturn(provModel);
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-                appProviderId, productClass)).thenReturn(null);
-
-        toTest.deleteRssModel(aggregatorId, appProviderId, productClass);
+        stakeholders.stream().forEach((stakeholder) -> {
+            Assert.assertTrue(dbModel.getStakeholders().contains(stakeholder));
+        });
     }
 
     @Test
-            (expected = RSSException.class)
-    public void deleteRssModelRSSExceptionAggregatorNullTest() throws Exception {
-        String aggregatorId = null;
-        String productClass = "productClass";
-        String appProviderId = "provider@mail.com";
+    public void emptyListRSModelsToBeRemoved() throws Exception {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(new DbeAppProvider());
 
-        toTest.deleteRssModel(aggregatorId, appProviderId, productClass);
+        toTest.deleteRssModel(rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
+
+        verify(this.revenueShareConfDao, never()).delete(Matchers.isA(SetRevenueShareConf.class));
     }
 
     @Test
-            (expected = RSSException.class)
-    public void deleteRssModelRSSExceptionAggregatorEmptyTest() throws Exception {
-        String aggregatorId = "";
-        String productClass = "productClass@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        toTest.deleteRssModel(aggregatorId, appProviderId, productClass);
+    public void throwsRSSExceptionNullAggregator() throws Exception {
+        try {
+            this.toTest.deleteRssModel(null, null, null);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, e.getExceptionType());
+            Assert.assertEquals("Missing mandatory parameter: aggregatorId", e.getMessage());
+        }
     }
 
     @Test
-    public void existModelTrueTest() {
-        String aggregatorId = "aggregatorId@mail.com";
-        String productClass = "productClass@mail.com";
-        String appProviderId = "provider@mail.com";
+    public void throwsRSSExceptionNotExistingProvider() throws Exception {
+        try {
+            this.toTest.deleteRssModel(
+                    rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, e.getExceptionType());
+            Assert.assertEquals("Resource provider does not exist", e.getMessage());
+        }
+    }
 
+    @Test
+    public void rsModelExist() {
         List <SetRevenueShareConf> revenueShareConfs = mock(LinkedList.class);
-
         when(revenueShareConfs.isEmpty()).thenReturn(false);
 
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-                appProviderId, productClass)).thenReturn(revenueShareConfs);
+        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(revenueShareConfs);
 
-        boolean returned = toTest.existModel(aggregatorId, appProviderId, productClass);
+        boolean returned = toTest.existModel(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
         Assert.assertTrue(returned);
     }
 
     @Test
-    public void existModelFalse1Test() {
-        String aggregatorId = "aggregatorId@mail.com";
-        String productClass = "productClass@mail.com";
-        String appProviderId = "provider@mail.com";
+    public void rsModelNotExistEmpty() {
 
-        List <SetRevenueShareConf> revenueShareConfs = mock(LinkedList.class);
+        List <SetRevenueShareConf> revenueShareConfs = new ArrayList<>();
 
-        when(revenueShareConfs.isEmpty()).thenReturn(true);
+        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(revenueShareConfs);
 
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-                appProviderId, productClass)).thenReturn(revenueShareConfs);
-
-        boolean returned = toTest.existModel(aggregatorId, appProviderId, productClass);
+        boolean returned = toTest.existModel(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
         Assert.assertFalse(returned);
     }
 
     @Test
-    public void existModelFalse2Test() {
-        String aggregatorId = "aggregatorId@mail.com";
-        String productClass = "productClass@mail.com";
-        String appProviderId = "provider@mail.com";
-
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-                appProviderId, productClass)).thenReturn(null);
-
-        boolean returned = toTest.existModel(aggregatorId, appProviderId, productClass);
+    public void rsModelNotExistNull() {
+        boolean returned = toTest.existModel(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
         Assert.assertFalse(returned);
     }
 
     @Test
-    public void getRssModelsTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String appProviderId = "appProvider@mail.com";
-        String productClass = "productClass";
+    public void productClassModelRetrieved() throws RSSException {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
 
-        DbeAppProvider dbeAppProvider = new DbeAppProvider();
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        DbeAggregator dbeAggregator = new DbeAggregator(aggregatorId, aggregatorId);
-        List <SetRevenueShareConf> revenueShareConfs = new LinkedList<>();
-        SetRevenueShareConf revenueShareConf = new SetRevenueShareConf();
-        SetRevenueShareConfId revenueShareConfId = new SetRevenueShareConfId();
-        Set <ModelProvider> modelProviders = new HashSet<>();
-        ModelProvider modelProvider = new ModelProvider();
-        ModelProviderId modelProviderId = new ModelProviderId();
+        List<SetRevenueShareConf> models = new ArrayList<>();
+        models.add(this.buildDatabaseRSModel());
 
-        dbeAppProvider.setId(dbeAppProviderId);
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        revenueShareConfs.add(revenueShareConf);
-        revenueShareConf.setAggregator(dbeAggregator);
-        revenueShareConf.setAggregatorValue(BigDecimal.valueOf(50));
-        revenueShareConf.setAlgorithmType("");
-        revenueShareConf.setId(revenueShareConfId);
-        revenueShareConf.setOwnerValue(BigDecimal.valueOf(40));
-        revenueShareConf.setStakeholders(modelProviders);
-        revenueShareConfId.setModelOwner(dbeAppProvider);
-        revenueShareConfId.setProductClass(productClass);
-        modelProviders.add(modelProvider);
-        modelProvider.setId(modelProviderId);
-        modelProvider.setModel(revenueShareConf);
-        modelProvider.setModelValue(BigDecimal.valueOf(10));
-        modelProvider.setStakeholder(dbeAppProvider);
-        modelProviderId.setModel(revenueShareConf);
-        modelProviderId.setStakeholder(dbeAppProvider);
+        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(models);
 
+        List<RSSModel> result = toTest.getRssModels(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
-        when(appProviderDao.getProvider(aggregatorId, appProviderId)).thenReturn(dbeAppProvider);
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-            appProviderId, productClass)).thenReturn(revenueShareConfs);
+        Assert.assertEquals(1, result.size());
+        RSSModel model = result.get(0);
 
-        toTest.getRssModels(aggregatorId, appProviderId, productClass);
+        Assert.assertEquals(rssModel.getAggregatorId(), model.getAggregatorId());
+        Assert.assertEquals(rssModel.getAggregatorValue(), model.getAggregatorValue());
+        Assert.assertEquals(rssModel.getAlgorithmType(), model.getAlgorithmType());
+        Assert.assertEquals(rssModel.getOwnerProviderId(), model.getOwnerProviderId());
+        Assert.assertEquals(rssModel.getOwnerValue(), model.getOwnerValue());
+        Assert.assertEquals(rssModel.getProductClass(), model.getProductClass());
+
+        // Validate stakeholders
+        Assert.assertEquals(rssModel.getStakeholders().size(), model.getStakeholders().size());
+        for (int i = 0; i < rssModel.getStakeholders().size(); i++) {
+            Assert.assertEquals(rssModel.getStakeholders().get(i).getStakeholderId(),
+                    model.getStakeholders().get(i).getStakeholderId());
+
+            Assert.assertEquals(rssModel.getStakeholders().get(i).getModelValue(),
+                    model.getStakeholders().get(i).getModelValue());
+        } 
     }
 
     @Test
     public void getRssModelsNullArgumentsTest() throws RSSException {
-        String aggregatorId = "aggregator@mail.com";
-        String appProviderId = "appProvider@mail.com";
-        String productClass = "productClass";
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        List<RSSModel> result = toTest.getRssModels(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), null);
 
-        DbeAppProvider dbeAppProvider = new DbeAppProvider();
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        DbeAggregator dbeAggregator = new DbeAggregator(aggregatorId, aggregatorId);
-        List <SetRevenueShareConf> revenueShareConfs = new LinkedList<>();
-        SetRevenueShareConf revenueShareConf = new SetRevenueShareConf();
-        SetRevenueShareConfId revenueShareConfId = new SetRevenueShareConfId();
-        Set <ModelProvider> modelProviders = new HashSet<>();
-        ModelProvider modelProvider = new ModelProvider();
-        ModelProviderId modelProviderId = new ModelProviderId();
-
-        dbeAppProvider.setId(dbeAppProviderId);
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        revenueShareConfs.add(revenueShareConf);
-        revenueShareConf.setAggregator(dbeAggregator);
-        revenueShareConf.setAggregatorValue(BigDecimal.valueOf(50));
-        revenueShareConf.setAlgorithmType("");
-        revenueShareConf.setId(revenueShareConfId);
-        revenueShareConf.setOwnerValue(BigDecimal.valueOf(40));
-        revenueShareConf.setStakeholders(modelProviders);
-        revenueShareConfId.setModelOwner(dbeAppProvider);
-        revenueShareConfId.setProductClass(productClass);
-        modelProviders.add(modelProvider);
-        modelProvider.setId(modelProviderId);
-        modelProvider.setModel(revenueShareConf);
-        modelProvider.setModelValue(BigDecimal.valueOf(10));
-        modelProvider.setStakeholder(dbeAppProvider);
-        modelProviderId.setModel(revenueShareConf);
-        modelProviderId.setStakeholder(dbeAppProvider);
-
-
-        when(appProviderDao.getProvider(aggregatorId, appProviderId)).thenReturn(dbeAppProvider);
-        when(revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-            appProviderId, productClass)).thenReturn(revenueShareConfs);
-
-        toTest.getRssModels(aggregatorId, null, productClass);
+        Assert.assertTrue(result.isEmpty());
     }
 
     @Test
-    public void updateRssModelTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String productClass = "productClass";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProvider = "provider@mail.com";
-        String appProviderId = "appProvider@mail.com";
+    public void shouldUpdateRssModel() throws Exception {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        DbeAppProvider providerModel = new DbeAppProvider();
 
-        RSSModel rSSModel = new RSSModel();
-        List <StakeholderModel> stakeholderModels = new LinkedList<>();
-        StakeholderModel stakeholderModel = new StakeholderModel();
-        DbeAppProvider dbeAppProvider = new DbeAppProvider();
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        DbeAggregator dbeAggregator = new DbeAggregator();
-        Set <SetRevenueShareConf> revenueShareConfs = new HashSet<>();
-        SetRevenueShareConf revenueShareConf = new SetRevenueShareConf();
-        Set <SharingReport> sharingReports = new HashSet<>();
-        SharingReport sharingReport = new SharingReport();
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(providerModel);
 
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProvider);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(40));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(stakeholderModels);
-        stakeholderModels.add(stakeholderModel);
-        stakeholderModel.setModelValue(BigDecimal.valueOf(10));
-        stakeholderModel.setStakeholderId(aggregatorId);
-        dbeAppProvider.setId(dbeAppProviderId);
-        dbeAppProvider.setModels(revenueShareConfs);
-        dbeAppProvider.setReports(null);
-        dbeAppProvider.setTxCorrelationNumber(Integer.MIN_VALUE);
-        dbeAppProvider.setTxName(productClass);
-        dbeAppProvider.setTxTimeStamp(null);
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(ownerProvider);
-        dbeAggregator.setTxEmail(aggregatorId);
-        dbeAggregator.setTxName(aggregatorId);
-        revenueShareConfs.add(revenueShareConf);
-        revenueShareConf.setAggregator(dbeAggregator);
-        revenueShareConf.setAggregatorValue(BigDecimal.ZERO);
-        revenueShareConf.setAlgorithmType(algorithmType);
-        revenueShareConf.setId(null);
-        revenueShareConf.setOwnerValue(BigDecimal.ZERO);
-        revenueShareConf.setStakeholders(null);
+        SetRevenueShareConf dbModel = this.buildDatabaseRSModel();
 
-        sharingReports.add(sharingReport);
+        when(this.revenueShareConfDao.getById(Matchers.isA(SetRevenueShareConfId.class))).thenReturn(dbModel);
 
+        // Update model values
+        rssModel.setOwnerValue(new BigDecimal(40));
+        rssModel.setAggregatorShare(new BigDecimal(40));
 
-        when(appProviderDao.getProvider(anyString(), anyString()))
-                .thenReturn(dbeAppProvider);
-        when(revenueShareConfDao.getById(any(SetRevenueShareConfId.class))).thenReturn(revenueShareConf);
+        RSSModel newModel = toTest.updateRssModel(rssModel);
 
-        toTest.updateRssModel(rSSModel);
+        Assert.assertEquals(rssModel, newModel);
+
+        ArgumentCaptor<SetRevenueShareConfId> idCaptor = ArgumentCaptor.forClass(SetRevenueShareConfId.class);
+        verify(this.revenueShareConfDao).getById(idCaptor.capture());
+
+        SetRevenueShareConfId revId = idCaptor.getValue();
+        Assert.assertEquals(rssModel.getProductClass(), revId.getProductClass());
+        Assert.assertEquals(rssModel.getOwnerProviderId(), revId.getModelOwner().getId().getTxAppProviderId());
+
+        // Verify calls        
+        ArgumentCaptor<ModelProvider> stCaptor = ArgumentCaptor.forClass(ModelProvider.class);
+        verify(this.modelProviderDao).delete(stCaptor.capture());
+
+        ModelProvider expSt = dbModel.getStakeholders().iterator().next();
+        Assert.assertEquals(expSt.getStakeholder().getTxName(), stCaptor.getValue().getStakeholder().getTxName());
+
+        ArgumentCaptor<SetRevenueShareConf> modelCaptor = ArgumentCaptor.forClass(SetRevenueShareConf.class);
+        verify(this.revenueShareConfDao).update(modelCaptor.capture());
+
+        SetRevenueShareConf newDBModel = modelCaptor.getValue();
+
+        Assert.assertEquals(rssModel.getAggregatorValue(), newDBModel.getAggregatorValue());
+        Assert.assertEquals(rssModel.getOwnerValue(), newDBModel.getOwnerValue());
+
+        ArgumentCaptor<ModelProvider> stCreateCaptor = ArgumentCaptor.forClass(ModelProvider.class);
+        verify(this.modelProviderDao).create(stCreateCaptor.capture());
+
+        Assert.assertEquals(providerModel, stCreateCaptor.getValue().getStakeholder());
     }
 
     @Test
-    (expected = RSSException.class)
-    public void updateRssModelRSSExceptionTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String productClass = "productClass";
-        String algorithmType = "FIXED_PERCENTAGE";
-        String ownerProvider = "provider@mail.com";
-        String appProviderId = "appProvider@mail.com";
+    public void throwsExceptionRSModelNotExists () throws Exception {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
 
-        RSSModel rSSModel = new RSSModel();
-        List <StakeholderModel> stakeholderModels = new LinkedList<>();
-        StakeholderModel stakeholderModel = new StakeholderModel();
-        DbeAppProvider dbeAppProvider = new DbeAppProvider();
-        DbeAppProviderId dbeAppProviderId = new DbeAppProviderId();
-        DbeAggregator dbeAggregator = new DbeAggregator();
-        Set <SetRevenueShareConf> revenueShareConfs = new HashSet<>();
-        SetRevenueShareConf revenueShareConf = new SetRevenueShareConf();
-        Set <SharingReport> sharingReports = new HashSet<>();
-        SharingReport sharingReport = new SharingReport();
+        when(appProviderDao.getProvider(
+                rssModel.getAggregatorId(),
+                rssModel.getStakeholders().get(0).getStakeholderId()))
+                .thenReturn(new DbeAppProvider());
 
-        rSSModel.setAggregatorId(aggregatorId);
-        rSSModel.setAggregatorShare(BigDecimal.valueOf(50));
-        rSSModel.setAlgorithmType(algorithmType);
-        rSSModel.setOwnerProviderId(ownerProvider);
-        rSSModel.setOwnerValue(BigDecimal.valueOf(40));
-        rSSModel.setProductClass(productClass);
-        rSSModel.setStakeholders(stakeholderModels);
-        stakeholderModels.add(stakeholderModel);
-        stakeholderModel.setModelValue(BigDecimal.valueOf(10));
-        stakeholderModel.setStakeholderId(aggregatorId);
-        dbeAppProvider.setId(dbeAppProviderId);
-        dbeAppProvider.setModels(revenueShareConfs);
-        dbeAppProvider.setReports(null);
-        dbeAppProvider.setTxCorrelationNumber(Integer.MIN_VALUE);
-        dbeAppProvider.setTxName(productClass);
-        dbeAppProvider.setTxTimeStamp(null);
-        dbeAppProviderId.setAggregator(dbeAggregator);
-        dbeAppProviderId.setTxAppProviderId(ownerProvider);
-        dbeAggregator.setTxEmail(aggregatorId);
-        dbeAggregator.setTxName(aggregatorId);
-        revenueShareConfs.add(revenueShareConf);
-        revenueShareConf.setAggregator(dbeAggregator);
-        revenueShareConf.setAggregatorValue(BigDecimal.ZERO);
-        revenueShareConf.setAlgorithmType(algorithmType);
-        revenueShareConf.setId(null);
-        revenueShareConf.setOwnerValue(BigDecimal.ZERO);
-        revenueShareConf.setStakeholders(null);
-
-        sharingReports.add(sharingReport);
-
-
-        when(appProviderDao.getProvider(anyString(), anyString()))
-                .thenReturn(dbeAppProvider);
-        when(revenueShareConfDao.getById(any(SetRevenueShareConfId.class))).thenReturn(null);
-
-        toTest.updateRssModel(rSSModel);
+        try {
+            toTest.updateRssModel(rssModel);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, e.getExceptionType());
+            Assert.assertEquals("Resource RSS Model does not exist", e.getMessage());
+        }
     }
 }

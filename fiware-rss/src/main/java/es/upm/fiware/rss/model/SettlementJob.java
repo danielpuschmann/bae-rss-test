@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2016, CoNWeT Lab., Universidad Politécnica de Madrid
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -14,25 +14,17 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 package es.upm.fiware.rss.model;
 
 /**
  *
  * @author fdelavega
  */
-public class Aggregator {
-    private String aggregatorName;
+public class SettlementJob {
     private String aggregatorId;
-    private boolean defaultAggregator;
-
-    public String getAggregatorName() {
-        return aggregatorName;
-    }
-
-    public void setAggregatorName(String aggregatorName) {
-        this.aggregatorName = aggregatorName;
-    }
+    private String providerId;
+    private String productClass;
+    private String callbackUrl;
 
     public String getAggregatorId() {
         return aggregatorId;
@@ -42,11 +34,27 @@ public class Aggregator {
         this.aggregatorId = aggregatorId;
     }
 
-    public boolean isDefaultAggregator() {
-        return defaultAggregator;
+    public String getProviderId() {
+        return providerId;
     }
 
-    public void setDefaultAggregator(boolean defaultAggregator) {
-        this.defaultAggregator = defaultAggregator;
+    public void setProviderId(String providerId) {
+        this.providerId = providerId;
+    }
+
+    public String getProductClass() {
+        return productClass;
+    }
+
+    public void setProductClass(String productClass) {
+        this.productClass = productClass;
+    }
+
+    public String getCallbackUrl() {
+        return callbackUrl;
+    }
+
+    public void setCallbackUrl(String callbackUrl) {
+        this.callbackUrl = callbackUrl;
     }
 }

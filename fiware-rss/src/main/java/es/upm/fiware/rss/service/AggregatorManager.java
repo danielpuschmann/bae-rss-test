@@ -89,18 +89,50 @@ public class AggregatorManager {
             throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
         }
 
+        // Check that the aggregator does not exists
+        boolean aggExists = true;
+        try {
+            this.getAggregator(aggregator.getAggregatorId());
+        } catch (RSSException e) {
+            aggExists = false;
+        }
+
+        if (aggExists) {
+            String[] args = {"The Aggregator " + aggregator.getAggregatorId() + " already exists"};
+            throw  new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
+        }
+
+        // If this is the first aggegator it must be the default one
+        if (this.aggregatorDao.getAll().isEmpty()) {
+            aggregator.setDefaultAggregator(true);
+        }
+
+        // Change the default aggregator if needed
+        if (aggregator.isDefaultAggregator()) {
+            DbeAggregator agg = this.aggregatorDao.getDefaultAggregator();
+
+            if (agg != null) {
+                agg.setDefaultAggregator(false);
+            }
+        }
+
         // Build new aggregator object
         DbeAggregator dbAggregator = new DbeAggregator();
         dbAggregator.setTxEmail(aggregator.getAggregatorId());
         dbAggregator.setTxName(aggregator.getAggregatorName());
+        dbAggregator.setDefaultAggregator(aggregator.isDefaultAggregator());
 
         // Save aggregator to the DB
-        try {
-            this.aggregatorDao.create(dbAggregator);
-        } catch (org.hibernate.NonUniqueObjectException e) {
-            String[] args = {"The given aggregator already exists"};
-            throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
-        }
+        this.aggregatorDao.create(dbAggregator);
+    }
+
+    public Aggregator buildAPIAggregator(DbeAggregator ag) {
+        Aggregator aggregator = new Aggregator();
+        aggregator.setAggregatorId(ag.getTxEmail());
+        aggregator.setAggregatorName(ag.getTxName());
+        aggregator.setDefaultAggregator(ag.isDefaultAggregator());
+
+        return aggregator;
     }
 
     /**
@@ -113,12 +145,12 @@ public class AggregatorManager {
         List<Aggregator> apiAggregators = new ArrayList<>();
         List<DbeAggregator> aggregators = this.getAggregators();
 
-        for (DbeAggregator aggregator: aggregators) {
-            Aggregator apiAggregator = new Aggregator();
-            apiAggregator.setAggregatorId(aggregator.getTxEmail());
-            apiAggregator.setAggregatorName(aggregator.getTxName());
+        aggregators.stream().map((aggregator) -> {
+            return this.buildAPIAggregator(aggregator);
+        }).forEach((apiAggregator) -> {
             apiAggregators.add(apiAggregator);
-        }
+        });
+
         return apiAggregators;
     }
 
@@ -136,11 +168,17 @@ public class AggregatorManager {
             String[] args = {aggregatorId};
             throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
         }
+        return this.buildAPIAggregator(ag);
+    }
 
-        Aggregator aggregator = new Aggregator();
-        aggregator.setAggregatorId(aggregatorId);
-        aggregator.setAggregatorName(ag.getTxName());
+    public Aggregator getDefaultAggregator () throws RSSException {
+        DbeAggregator aggregator = this.aggregatorDao.getDefaultAggregator();
 
-        return aggregator;
+        if (aggregator == null) {
+            String[] args = {"There is not any aggregator registered"};
+            throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
+        }
+
+        return this.buildAPIAggregator(aggregator);
     }
 }

@@ -24,6 +24,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.MediaType;
 
 import es.upm.fiware.rss.algorithm.AlgorithmFactory;
 import es.upm.fiware.rss.model.Algorithm;
@@ -38,7 +39,7 @@ public class AlgorithmService {
 
     @WebMethod
     @GET
-    @Produces("application/json")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response getAlgoritms() throws Exception {
         AlgorithmFactory factory = new AlgorithmFactory();
         List<Algorithm> algorithms = factory.getAlgorithms();

@@ -16,9 +16,10 @@
  */
 package es.upm.fiware.rss.dao;
 
-import java.util.List;
-
 import es.upm.fiware.rss.model.SharingReport;
+
+import java.util.List;
+import java.util.Optional;
 
 public interface SharingReportDao extends GenericDao<SharingReport, Integer> {
 
@@ -27,6 +28,6 @@ public interface SharingReportDao extends GenericDao<SharingReport, Integer> {
      * 
      * @param providerId
      */
-    List<SharingReport> getSharingReportsByParameters(String aggregator, String providerId, String productClass);
 
+    Optional<List<SharingReport>> getSharingReportsByParameters(String aggregator, String providerId, String productClass, boolean all, int offset, int size);
 }

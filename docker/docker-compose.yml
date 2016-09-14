@@ -1,18 +1,22 @@
 rss_db:
     image: mysql:latest
+    ports:
+        - "3333:3306"
     volumes:
         - /var/lib/mysql
     environment:
         - MYSQL_ROOT_PASSWORD=my-secret-pw
-        - MYSQL_DATABASE=rss
+        - MYSQL_DATABASE=RSS
 
 rss:
-    image: rss
+    image: biz-ecosystem-rss
     ports:
         - "9999:8080"
+        - "4444:4848"
+        - "1111:8181"
     links:
         - rss_db
     environment:
-        - RSS_CLIENT_ID=
-        - RSS_SECRET=
-        - RSS_URL=
+        - MYSQL_DBUSR=root
+        - MYSQL_DBPASSWORD=my-secret-pw
+        - MYSQL_HOST=rss_db

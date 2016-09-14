@@ -1,7 +1,5 @@
-package es.upm.fiware.rss.dao.loader;
-
 /**
- * Copyright (C) 2015 CoNWeT Lab., Universidad Politécnica de Madrid
+ * Copyright (C) 2015 - 2016 CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -16,7 +14,7 @@ package es.upm.fiware.rss.dao.loader;
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+package es.upm.fiware.rss.dao.loader;
 
 import es.upm.fiware.rss.dao.CurrencyDao;
 import es.upm.fiware.rss.model.BmCurrency;
@@ -45,13 +43,11 @@ public class BmCurrencyLoader {
     @Qualifier("transactionManager")
     protected PlatformTransactionManager txManager;
 
-    private void saveCurrency(String code, String description, String symbol, String codeNum, int decimals) {
+    private void saveCurrency(String code, String description, String symbol) {
         BmCurrency c = new BmCurrency();
         c.setTxIso4217Code(code);
         c.setTxDescription(description);
         c.setTcSymbol(symbol);
-        c.setTxIso4217CodeNum(codeNum);
-        c.setNuIso4217Decimals(decimals);
         this.currencyDao.create(c);
     }
 
@@ -66,24 +62,10 @@ public class BmCurrencyLoader {
                 List<BmCurrency> currs = currencyDao.getAll();
 
                 if (currs == null || currs.isEmpty()) {
-                    saveCurrency("EUR","Euro","€","978", 2);
-                    saveCurrency("GBP","Esterlina","£","826",2);
-                    saveCurrency("BRL","Verdadero brasileno","R$","986",2);
-                    saveCurrency("ARS","Peso argentino","$a","032",2);
-                    saveCurrency("MXN","Peso mexicano","$","484",2);
-                    saveCurrency("CLP","Peso chileno","$","152",2);
-                    saveCurrency("PEN","Nuevo sol","S/.","604",2);
-                    saveCurrency("VEF","Bolivar fuerte","Bs.","937",2);
-                    saveCurrency("COP","Peso colombiano","$","170",2);
-                    saveCurrency("USD","US Dolar","$","840",2);
-                    saveCurrency("NIO","Cordoba oro","C$","558",2);
-                    saveCurrency("GTQ","Quetzal","Q","320",2);
-                    saveCurrency("SVC","El Salvador Colon","¢","222",2);
-                    saveCurrency("PAB","Balboa","B/.","590",2);
-                    saveCurrency("UYU","Peso Uruguayo","$","858",2);
-                    saveCurrency("MYR","Malaysian ringgit","RM","458",2);
-                    saveCurrency("NOK","Norwegian krone","kr","578",2);
-                    saveCurrency("HUF","Hungarian forint","Ft","348",2);
+                    // Save supported currencies
+                    for (SupportedCurrencies curr:  SupportedCurrencies.values()) {
+                        saveCurrency(curr.toString(), curr.getDescription(), curr.getSymbol());
+                    }
                 }
             }
         });

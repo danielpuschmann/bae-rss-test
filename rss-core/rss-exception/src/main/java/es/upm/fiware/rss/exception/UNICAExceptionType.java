@@ -101,7 +101,7 @@ public enum UNICAExceptionType implements InterfaceExceptionType {
     /***
      * Operation syntax is right, but it does not fulfil the conditions (permissions,...) of the scenario or service.
      */
-    NON_ALLOWED_OPERATION("SVC1013", "%s Operation is not allowed: %s", HttpStatus.FORBIDDEN),
+    NON_ALLOWED_OPERATION("SVC1013", "Operation is not allowed: %s", HttpStatus.FORBIDDEN),
 
     /***
      * UNICA API error response for requests with the absence of some expected parameter. I.e.: a parameter that is

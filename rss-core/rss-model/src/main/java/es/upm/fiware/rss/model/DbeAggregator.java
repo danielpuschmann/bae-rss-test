@@ -3,6 +3,8 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  * 
+ * Copyright (C) 2016, CoNWeT Lab., Universidad Politécnica de Madrid
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of the
@@ -34,6 +36,7 @@ public class DbeAggregator implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
     private String txName;
     private String txEmail;
+    private boolean defaultAggregator;
 
     /**
      * 
@@ -83,4 +86,12 @@ public class DbeAggregator implements java.io.Serializable {
         this.txEmail = txEmail;
     }
 
+    @Column(name = "IS_DEFAULT")
+    public boolean isDefaultAggregator() {
+        return defaultAggregator;
+    }
+
+    public void setDefaultAggregator(boolean defaultAggregator) {
+        this.defaultAggregator = defaultAggregator;
+    }
 }

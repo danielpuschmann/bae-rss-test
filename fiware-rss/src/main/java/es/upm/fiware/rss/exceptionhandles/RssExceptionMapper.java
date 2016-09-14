@@ -19,6 +19,7 @@
 
 package es.upm.fiware.rss.exceptionhandles;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
@@ -81,6 +82,8 @@ public class RssExceptionMapper implements ExceptionMapper<Exception> {
                 .build();
         } else if (e instanceof NotFoundException) {
             return Response.status(404).build();
+        } else if (e instanceof JsonParseException) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } else {
             logger.error("Return Exception: " + e.getMessage(), e);
             // Write response

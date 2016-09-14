@@ -21,21 +21,23 @@
 
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
 import javax.ws.rs.core.Response;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.model.RSSModel;
-import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.RSSModelsManager;
 import es.upm.fiware.rss.service.UserManager;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
+import java.util.Map;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import org.mockito.MockitoAnnotations;
 
 /**
@@ -48,180 +50,62 @@ public class RSSModelServiceTest {
     @Mock private UserManager userManager;
     @InjectMocks private RSSModelService toTest;
 
+    private RSSModel model;
+    private final String aggregator = "aggregator@email.com";
+    private final String provider = "providerId";
+    private final String productClass = "productClass";
+
     @Before
-    public void setUp() {
+    public void setUp() throws RSSException {
         MockitoAnnotations.initMocks(this);
+
+        this.model = new RSSModel();
+        Map<String, String> ids = new HashMap<>();
+        ids.put("aggregator", this.aggregator);
+        ids.put("provider", this.provider);
+
+        when(this.userManager.getAllowedIds(null, null, "RS models")).thenReturn(ids);
+        when(this.userManager.getAllowedIdsSingleProvider(null, null, "RS models")).thenReturn(ids);
     }
 
     @Test
-    public void createRSSModelTest() throws Exception {
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("aggregator@mail.com");
-        RSSModel returnedModel = new RSSModel();
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.isAdmin()).thenReturn(true);
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(rssModelsManager.createRssModel(model)).thenReturn(returnedModel);
-
-        Response response = toTest.createRSSModel(model);
-        Assert.assertEquals(returnedModel, response.getEntity());
-    }
-
-    @Test
-    (expected = MissingFormatArgumentException.class)
-    public void createRSSModelNotAllowedTest() throws Exception {
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("aggregator@mail.com");
-        RSSModel returnedModel = new RSSModel();
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.isAdmin()).thenReturn(false);
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(rssModelsManager.createRssModel(model)).thenReturn(returnedModel);
-
-        toTest.createRSSModel(model);
-    }
-
-    @Test
-    public void deleteRSSModelTest() throws Exception {
-        String appProviderId = "provider@mail.com";
-        String productClass = "productClass";
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-
-        toTest.deleteRSSModel(null, appProviderId, productClass);
-    }
-
-    @Test
-    public void getRssModelsTest() throws Exception {
-        String appProviderId = "provider@mail.com";
-        String productClass = "productClass";
-        String aggregatorId = "aggregator@mail.com";
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
+    public void getRSSModels () throws Exception {
         List<RSSModel> rssModels = new LinkedList<>();
+        when(rssModelsManager.getRssModels(
+                this.aggregator, this.provider, this.productClass)).thenReturn(rssModels);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(true);
-        when(rssModelsManager.getRssModels(aggregatorId, appProviderId, productClass)).thenReturn(rssModels);
-
-        Response response = toTest.getRssModels(appProviderId, productClass, aggregatorId);
+        Response response = toTest.getRssModels(null, productClass, null);
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(rssModels, response.getEntity());
     }
 
     @Test
-    public void getRssModels2Test() throws Exception {
-        String appProviderId = "provider@mail.com";
-        String productClass = "productClass";
-        String aggregatorId = "aggregator@mail.com";
+    public void createRSModel() throws Exception {
+        when(rssModelsManager.createRssModel(this.model)).thenReturn(this.model);
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail(aggregatorId);
+        Response response = toTest.createRSSModel(this.model);
+        Assert.assertEquals(this.model, response.getEntity());
 
-        List<RSSModel> rssModels = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(rssModelsManager.getRssModels(aggregatorId, appProviderId, productClass)).thenReturn(rssModels);
-
-        Response response = toTest.getRssModels(appProviderId, productClass, aggregatorId);
-
-        Assert.assertEquals(200, response.getStatus());
-        Assert.assertEquals(rssModels, response.getEntity());
+        Assert.assertEquals(this.aggregator, this.model.getAggregatorId());
+        Assert.assertEquals(this.provider, this.model.getOwnerProviderId());
     }
 
     @Test
-    (expected = MissingFormatArgumentException.class)
-    public void getRssModelsNotAllowedTest() throws Exception {
-        String appProviderId = "provider@mail.com";
-        String productClass = "productClass";
-        String aggregatorId = "aggregator@mail.com";
+    public void updateRSmodel() throws Exception {
+        when(rssModelsManager.updateRssModel(this.model)).thenReturn(this.model);
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
+        Response response = toTest.modifyRSSModel(this.model);
+        Assert.assertEquals(this.model, response.getEntity());
 
-        List<RSSModel> rssModels = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(rssModelsManager.getRssModels(aggregatorId, appProviderId, productClass)).thenReturn(rssModels);
-
-        Response response = toTest.getRssModels(appProviderId, productClass, aggregatorId);
-
-
+        Assert.assertEquals(this.aggregator, this.model.getAggregatorId());
+        Assert.assertEquals(this.provider, this.model.getOwnerProviderId());
     }
 
     @Test
-    public void modifyRSSModelTest() throws Exception {
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("user@mail.com");
+    public void deleteRSModel() throws Exception {
+        Response response = toTest.deleteRSSModel(null, null, this.productClass);
+        Assert.assertEquals(204, response.getStatus());
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(true);
-        when(rssModelsManager.updateRssModel(model)).thenReturn(model);
-
-        Response response = toTest.modifyRSSModel(model);
-
-        Assert.assertEquals(201, response.getStatus());
-        Assert.assertEquals(model, response.getEntity());
-    }
-
-    @Test
-    public void modifyRSSModel2Test() throws Exception {
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("user@mail.com");
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(rssModelsManager.updateRssModel(model)).thenReturn(model);
-
-        Response response = toTest.modifyRSSModel(model);
-
-        Assert.assertEquals(201, response.getStatus());
-        Assert.assertEquals(model, response.getEntity());
-
-
-    }
-
-    @Test
-    (expected = MissingFormatArgumentException.class)
-    public void modifyRSSModelNotAllowedTest() throws Exception {
-        RSSModel model = new RSSModel();
-        model.setAggregatorId("aggregator@mail.com");
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(rssModelsManager.updateRssModel(model)).thenReturn(model);
-
-        toTest.modifyRSSModel(model);
+        verify(this.rssModelsManager).deleteRssModel(this.aggregator, this.provider, this.productClass);
     }
 }

@@ -18,15 +18,20 @@ package es.upm.fiware.rss.algorithm;
 
 import java.util.List;
 
+
+import java.util.ArrayList;
+
+import org.springframework.stereotype.Component;
+
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.Algorithm;
-import java.util.ArrayList;
 
 /**
  *
  * @author fdelavega
  */
+@Component
 public class AlgorithmFactory {
 
     /**

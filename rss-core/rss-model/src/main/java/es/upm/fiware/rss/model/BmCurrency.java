@@ -2,6 +2,8 @@
  * Revenue Settlement and Sharing System GE
  * Copyright (C) 2011-2014,  Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
+ * 
+ * Copyright (C) 2016 CoNWeT Lab., Universidad Politécnica de Madrid
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,8 +26,6 @@ import java.io.Serializable;
 import javax.persistence.Cacheable;
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
@@ -44,9 +44,8 @@ public class BmCurrency implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    @Column(name = "NU_CURRENCY_ID")
-    private long nuCurrencyId;
+    @Column(name = "TX_ISO4217_CODE")
+    private String txIso4217Code;
 
     @Column(name = "TC_SYMBOL")
     private String tcSymbol;
@@ -54,27 +53,10 @@ public class BmCurrency implements Serializable {
     @Column(name = "TX_DESCRIPTION")
     private String txDescription;
 
-    @Column(name = "TX_ISO4217_CODE")
-    private String txIso4217Code;
-
-    @Column(name = "TX_ISO4217_CODE_NUM")
-    private String txIso4217CodeNum;
-
-    @Column(name = "NU_ISO4217_DECIMALS")
-    private long nuIso4217Decimals;
-
     /**
      * Constructor.
      */
     public BmCurrency() {
-    }
-
-    public long getNuCurrencyId() {
-        return this.nuCurrencyId;
-    }
-
-    public void setNuCurrencyId(long nuCurrencyId) {
-        this.nuCurrencyId = nuCurrencyId;
     }
 
     public String getTcSymbol() {
@@ -100,36 +82,4 @@ public class BmCurrency implements Serializable {
     public void setTxIso4217Code(String txIso4217Code) {
         this.txIso4217Code = txIso4217Code;
     }
-
-    /**
-     * @return the txIso4217CodeNum
-     */
-    public final String getTxIso4217CodeNum() {
-        return txIso4217CodeNum;
-    }
-
-    /**
-     * @param txIso4217CodeNum
-     *            the txIso4217CodeNum to set
-     */
-    public final void setTxIso4217CodeNum(String txIso4217CodeNum) {
-        this.txIso4217CodeNum = txIso4217CodeNum;
-    }
-
-    /**
-     * @return the txIso4217Decimals
-     */
-    public final long getNuIso4217Decimals() {
-        return nuIso4217Decimals;
-    }
-
-    /**
-     * 
-     * 
-     * @param nuIso4217Decimals
-     */
-    public final void setNuIso4217Decimals(long nuIso4217Decimals) {
-        this.nuIso4217Decimals = nuIso4217Decimals;
-    }
-
 }

@@ -21,6 +21,8 @@
 
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import javax.ws.rs.core.Response;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,7 +33,9 @@ import es.upm.fiware.rss.service.CdrsManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.MissingFormatArgumentException;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
@@ -45,88 +49,59 @@ public class CdrsServiceTest {
     @Mock private CdrsManager cdrsManager;
     @InjectMocks private CdrsService toTest;
 
+    private RSUser user;
+    private final String aggregatorId = "aggregator@mail.com";
+    private final String providerId = "providerId";
+
     @Before
     public void setUp() throws Exception {
-
-    }
-
-    @Before
-    public void tearDown() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        this.user = new RSUser();
+        this.user.setId("userId");
+        this.user.setDisplayName("username");
+        this.user.setEmail("user@mail.com");
+
+        when(userManager.getCurrentUser()).thenReturn(this.user);
     }
 
     @Test
-    public void createCdrTest() throws Exception {
-
+    public void createCdr() throws Exception {
         List <CDR> list = new LinkedList<>();
+        when(userManager.isAdmin()).thenReturn(true);
 
         toTest.createCdr(list);
         verify(cdrsManager).createCDRs(list);
     }
 
     @Test
-    public void getCDRsTest() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String userId = "user@mail.com";
+    public void createCdrNotAllowed() throws Exception {
+        List<CDR> list = new LinkedList<>();
 
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
+        try {
+            toTest.createCdr(list);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(UNICAExceptionType.NON_ALLOWED_OPERATION, e.getExceptionType());
+            Assert.assertEquals("Operation is not allowed: You are not allowed to create transactions", e.getMessage());
+        }
+    }
 
+    @Test
+    public void getProviderCDRs() throws Exception {
         List <CDR> list = new LinkedList<>();
+        when(cdrsManager.getCDRs(this.aggregatorId, this.providerId)).thenReturn(list);
 
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(true);
-        when(cdrsManager.getCDRs(userId, providerId)).thenReturn(list);
+        Map<String, String> ids = new HashMap<>();
+        ids.put("provider", this.providerId);
+        ids.put("aggregator", this.aggregatorId);
 
-        Response response = toTest.getCDRs(aggregatorId, providerId);
+        when(this.userManager.getAllowedIds(
+                this.aggregatorId, this.providerId, "transactions")).thenReturn(ids);
+
+        Response response = toTest.getCDRs(this.aggregatorId, this.providerId);
 
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(list, response.getEntity());
     }
-
-
-    @Test
-    public void getCDRsNotAdminTest() throws Exception {
-        String providerId = "provider@mail.com";
-        String userId = "user@mail.com";
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        List <CDR> list = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(cdrsManager.getCDRs(userId, providerId)).thenReturn(list);
-
-        Response response = toTest.getCDRs(null, providerId);
-
-        Assert.assertEquals(200, response.getStatus());
-        Assert.assertEquals(list, response.getEntity());
-    }
-
-    @Test
-    (expected = MissingFormatArgumentException.class)
-    public void getCDRsNotAdmin2Test() throws Exception {
-        String aggregatorId = "aggregator@mail.com";
-        String providerId = "provider@mail.com";
-        String userId = "user@mail.com";
-
-        RSUser user = new RSUser();
-        user.setDisplayName("username");
-        user.setEmail("user@mail.com");
-
-        List <CDR> list = new LinkedList<>();
-
-        when(userManager.getCurrentUser()).thenReturn(user);
-        when(userManager.isAdmin()).thenReturn(false);
-        when(cdrsManager.getCDRs(userId, providerId)).thenReturn(list);
-
-        Response response = toTest.getCDRs(aggregatorId, providerId);
-        Assert.assertEquals(list, response.getEntity());
-    }
-
 }

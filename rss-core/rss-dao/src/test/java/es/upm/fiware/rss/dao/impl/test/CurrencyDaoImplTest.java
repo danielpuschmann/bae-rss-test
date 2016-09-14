@@ -3,7 +3,7 @@
  * Copyright (C) 2011-2014, Javier Lucio - lucio@tid.es
  * Telefonica Investigacion y Desarrollo, S.A.
  *
- * Copyright (C) 2015, CoNWeT Lab., Universidad Politénica de Madrid
+ * Copyright (C) 2015 - 2016, CoNWeT Lab., Universidad Politénica de Madrid
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,15 +27,10 @@ package es.upm.fiware.rss.dao.impl.test;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.orm.hibernate4.HibernateTransactionManager;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.transaction.TransactionConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,10 +60,7 @@ public class CurrencyDaoImplTest {
 
     @Autowired
     private DatabaseLoader databaseLoader;
-    
-    /*@Autowired
-    @Qualifier("transactionManager")
-    private HibernateTransactionManager transactionManager;*/
+
 
     /**
      * Method to insert data before test.
@@ -99,8 +91,7 @@ public class CurrencyDaoImplTest {
 
         // Check result
         Assert.assertNotNull("BmCurrency is null", c);
-        Assert.assertTrue("ID not equeal", c.getNuCurrencyId() == 1);
-        // Assert.assertTrue("ISO 3166 code not equeal", c.getTxIso4217Code().compareTo("978-EUR") == 0);
+        Assert.assertTrue("ID not equeal", c.getTxIso4217Code().equals("EUR"));
         Assert.assertTrue("Description not equeal", c.getTxDescription().compareTo("Euro") == 0);
         Assert.assertTrue("Symbol not equeal", c.getTcSymbol().compareTo("€") == 0);
     }
@@ -115,25 +106,7 @@ public class CurrencyDaoImplTest {
 
         // Check result
         Assert.assertNotNull("BmCurrency is null", c);
-        Assert.assertTrue("ID not equeal", c.getNuCurrencyId() == 1);
-        // Assert.assertTrue("ISO 3166 code not equeal", c.getTxIso4217Code().compareTo("978-EUR") == 0);
-        Assert.assertTrue("ISO 3166 code not equeal", c.getTxIso4217Code().compareTo("EUR") == 0);
-        Assert.assertTrue("Description not equeal", c.getTxDescription().compareTo("Euro") == 0);
-        Assert.assertTrue("Symbol not equeal", c.getTcSymbol().compareTo("€") == 0);
-    }
-
-    /**
-     * Test method for {@link es.upm.fiware.rss.dao.impl.CurrencyDaoImpl#getByIso4217IntegerCode(int)}.
-     */
-    public void test30GetByIso4217IntegerCode() {
-        CurrencyDaoImplTest.LOGGER.debug("Into test30GetByIso4217IntegerCode()");
-        // Call method to test
-        BmCurrency c = currencyDAO.getByIso4217IntegerCode(978);
-
-        // Check result
-        Assert.assertNotNull("BmCurrency is null", c);
-        Assert.assertTrue("ID not equeal", c.getNuCurrencyId() == 1);
-        // Assert.assertTrue("ISO 3166 code not equeal", c.getTxIso4217Code().compareTo("978-EUR") == 0);
+        Assert.assertTrue("ID not equeal", c.getTxIso4217Code().equals("EUR"));
         Assert.assertTrue("ISO 3166 code not equeal", c.getTxIso4217Code().compareTo("EUR") == 0);
         Assert.assertTrue("Description not equeal", c.getTxDescription().compareTo("Euro") == 0);
         Assert.assertTrue("Symbol not equeal", c.getTcSymbol().compareTo("€") == 0);

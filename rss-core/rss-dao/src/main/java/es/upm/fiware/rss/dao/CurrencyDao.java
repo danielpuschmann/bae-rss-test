@@ -26,16 +26,7 @@ import es.upm.fiware.rss.model.BmCurrency;
  * Interface that extends GenericDao. Interface defines additional method.
  * 
  */
-public interface CurrencyDao extends GenericDao<BmCurrency, Long> {
-
-    /**
-     * Method retrieves a BmCurrency that has a unique ISO 4217 code. Example: 978-EUR
-     * 
-     * @param iso4217Code
-     *            ISO 4217 code
-     * @return BmCurrency
-     */
-    // BmCurrency getByIso4217Code(String iso4217Code);
+public interface CurrencyDao extends GenericDao<BmCurrency, String> {
 
     /**
      * Method retrieves a BmCurrency that has a unique ISO 4217 code. Example: EUR
@@ -45,13 +36,4 @@ public interface CurrencyDao extends GenericDao<BmCurrency, Long> {
      * @return BmCurrency
      */
     BmCurrency getByIso4217StringCode(String iso4217Code);
-
-    /**
-     * Method retrieves a BmCurrency that has a unique ISO 4217 code. Example: 978
-     * 
-     * @param iso4217Code
-     *            ISO 4217 code (Integer, 3 digit)
-     * @return BmCurrency
-     */
-    BmCurrency getByIso4217IntegerCode(int iso4217Code);
 }
