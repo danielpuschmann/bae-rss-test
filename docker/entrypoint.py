@@ -25,7 +25,7 @@ with open("/etc/default/rss/database.properties", "w") as f:
 
     f.write(text)
 
-for i in range 0..20:
+for i in range(20):
     try:
         time.sleep(1)
         print("Trying to connect to the database:.... ")
