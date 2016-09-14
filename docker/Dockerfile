@@ -23,9 +23,9 @@ RUN mvn install -DskipTests
 
 RUN mkdir /etc/default/rss/
 
-RUN cp ./properties/database.properties /etc/default/rss/database.properties
+COPY database.properties /etc/default/rss/database.properties
 
-RUN cp ./properties/oauth.properties /etc/default/rss/oauth.properties
+COPY oauth.properties /etc/default/rss/oauth.properties
 
 COPY ./entrypoint.py /
 COPY ./entrypoint.sh /

@@ -1,4 +1,4 @@
-db:
+rss_db:
     image: mysql:latest
     ports:
         - "3333:3306"
@@ -15,9 +15,8 @@ rss:
         - "4444:4848"
         - "1111:8181"
     links:
-        - db
+        - rss_db
     environment:
         - MYSQL_DBUSR=root
         - MYSQL_DBPASSWORD=my-secret-pw
-        - MYSQL_HOST=db
-        - MYSQL_PORT=3333
+        - MYSQL_HOST=rss_db

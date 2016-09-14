@@ -18,13 +18,11 @@ DBPORT = getenv("MYSQL_PORT", "3306")
 text = ""
 with open("/etc/default/rss/database.properties") as f:
     text = f.read()
-
-with open("/etc/default/rss/database.properties", "w") as f:
-
-    text.replace("database.url=jdbc:mysql://localhost:3306/RSS", "database.url=jdbc:mysql://{}:{}/RSS".format(DBHOST, DBPORT))\
+    text = text.replace("database.url=jdbc:mysql://localhost:3306/RSS", "database.url=jdbc:mysql://{}:{}/RSS".format(DBHOST, DBPORT))\
         .replace("database.username=root", "database.username={}".format(DBUSER))\
         .replace("database.password=root", "database.password={}".format(DBPASSWD))
 
+with open("/etc/default/rss/database.properties", "w") as f:
     f.write(text)
 
 for i in range(20):
@@ -34,6 +32,7 @@ for i in range(20):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((DBHOST, int(DBPORT)))
         sock.close()
+        print("Successfully connected")
         break
     except:
         continue
