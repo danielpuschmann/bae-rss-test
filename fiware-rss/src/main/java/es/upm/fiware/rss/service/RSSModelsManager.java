@@ -41,6 +41,7 @@ import es.upm.fiware.rss.dao.ModelProviderDao;
 import es.upm.fiware.rss.dao.SetRevenueShareConfDao;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.ModelProvider;
@@ -95,6 +96,32 @@ public class RSSModelsManager {
         return result.isPresent();
     }
 
+    /**
+     * Returns the number of Revenue sharing models that fit the filters
+     *
+     * @param aggregatorId, Id of the aggregator
+     * @param appProviderId, Id if the provider owener of the revenue sharing models
+     * @param productClass, Product class where the models are applied
+     * @return Count object with number of RS models
+     * @throws RSSException
+     */
+    public Count countRssModels(
+            String aggregatorId, String appProviderId, String productClass)
+            throws RSSException {
+
+        if (null != appProviderId && !appProviderId.isEmpty()) {
+            checkValidAppProvider(aggregatorId, appProviderId);
+        }
+
+        Optional<List<SetRevenueShareConf>> models = revenueShareConfDao
+                .getRevenueModelsByParameters(
+                        aggregatorId, appProviderId, productClass);
+
+        Count result = new Count();
+        result.setSize(models.isPresent() ? models.get().size(): 0);
+
+        return result;
+    }
     /**
      * Retrives a list of revenue sharing models filtered by aggregator, provider
      * and product class

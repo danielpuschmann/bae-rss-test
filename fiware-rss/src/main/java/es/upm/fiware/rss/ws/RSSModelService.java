@@ -21,6 +21,7 @@
 
 package es.upm.fiware.rss.ws;
 
+import es.upm.fiware.rss.model.Count;
 import java.util.List;
 
 import javax.jws.WebMethod;
@@ -106,12 +107,18 @@ public class RSSModelService {
         Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, appProvider, "RS models");
 
         // Call service
-        List<RSSModel> rssModels = rssModelsManager.getRssModels(
+        Object entity;
+        if (action != null && action.toLowerCase().equals("count")) {
+            entity = (Count) rssModelsManager.countRssModels(
+                    ids.get("aggregator"), ids.get("provider"), productClass);
+        } else {
+             entity = (List<RSSModel>) rssModelsManager.getRssModels(
                 ids.get("aggregator"), ids.get("provider"), productClass, offset, size);
+        }
 
         // Response
         ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
-        rb.entity(rssModels);
+        rb.entity(entity);
         return rb.build();
     }
 

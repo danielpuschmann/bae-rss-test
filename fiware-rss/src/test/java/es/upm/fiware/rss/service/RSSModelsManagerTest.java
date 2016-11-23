@@ -33,6 +33,7 @@ import es.upm.fiware.rss.dao.SetRevenueShareConfDao;
 import es.upm.fiware.rss.exception.InterfaceExceptionType;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeAppProviderId;
@@ -521,6 +522,31 @@ public class RSSModelsManagerTest {
                 rssModel.getOwnerProviderId(), null, 0, -1);
 
         Assert.assertTrue(result.isEmpty());
+    }
+
+    private void testCountRSModels(Optional mock, int exp) throws RSSException {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(mock);
+
+        Count result = toTest.countRssModels(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
+
+        Assert.assertEquals(exp, (long) result.getSize());
+    }
+
+    @Test
+    public void shouldCountTheAvailableRSModels() throws RSSException {
+        List<SetRevenueShareConf> models = new ArrayList<>();
+        models.add(this.buildDatabaseRSModel());
+
+        Optional<List<SetRevenueShareConf>> modelsOpt = Optional.of(models);
+        this.testCountRSModels(modelsOpt, 1);
+    }
+
+    @Test
+    public void showReturnCeroCountWithEmptyResult() throws RSSException {
+        this.testCountRSModels(Optional.empty(), 0);
     }
 
     @Test
