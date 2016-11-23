@@ -258,9 +258,9 @@ public class SettlementManagerTest {
         toTest.runSettlement(job);
         
         // Validate calls
-        for (ProductSettlementTask task: tasks) {
+        tasks.stream().forEach((task) -> {
             verify(poolManager).submitTask(task, callbackUrl);
-        }
+        });
 
         verify(poolManager).closeTaskPool(callbackUrl);
     }
@@ -302,7 +302,7 @@ public class SettlementManagerTest {
     }
 
     @Test
-    public void testGetSharingReportsEmpty() {
+    public void shouldReturnAnEmptyListOfReports() {
         Optional<List<SharingReport>> sreports1 = Optional.empty();
         when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
                 .thenReturn(sreports1);
@@ -312,7 +312,8 @@ public class SettlementManagerTest {
         Assert.assertTrue((reports1.isEmpty()));
     }
 
-    @Test public void testGetReports() {
+    @Test
+    public void shouldReturnAListOfReports() {
         List<SharingReport> sharingReportList = generateReports(1, 1);
         Optional<List<SharingReport>> sharingReportListOpt = Optional.of(sharingReportList);
         when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
@@ -324,19 +325,31 @@ public class SettlementManagerTest {
         IntStream.range(0, 2).forEach(i -> {
             RSSReport rss = rssReportsList.get(i);
 
-            Assert.assertEquals(rss.getId(), i);
-            Assert.assertEquals(rss.getAggregatorId(), aggregatorId);
-            Assert.assertEquals(rss.getAggregatorValue(), new BigDecimal(0.3));
-            Assert.assertEquals(rss.getOwnerProviderId(), providerId);
-            Assert.assertEquals(rss.getOwnerValue(), new BigDecimal(0.7));
+            Assert.assertEquals(i, rss.getId());
+            Assert.assertEquals(aggregatorId, rss.getAggregatorId());
+            Assert.assertEquals(new BigDecimal(0.3), rss.getAggregatorValue());
+            Assert.assertEquals(providerId, rss.getOwnerProviderId());
+            Assert.assertEquals(new BigDecimal(0.7), rss.getOwnerValue());
 
-            Assert.assertEquals(rss.getAlgorithmType(), "FIXED_PERCENTAGE");
-            Assert.assertEquals(rss.getCurrency(), "EUR");
+            Assert.assertEquals("FIXED_PERCENTAGE", rss.getAlgorithmType());
+            Assert.assertEquals("EUR", rss.getCurrency());
 
-            Assert.assertEquals(rss.getProductClass(), productClass);
+            Assert.assertEquals(productClass, rss.getProductClass());
             Assert.assertTrue(rss.getTimestamp().before(new Date()));
-            Assert.assertEquals(rss.isPaid(), i < 1);
+            Assert.assertEquals(i < 1, rss.isPaid());
         });
+    }
+
+    @Test
+    public void shouldReturnAValidCount() {
+        List<SharingReport> sharingReportList = this.generateReports(2, 0);
+        Optional<List<SharingReport>> sharingReportListOpt = Optional.of(sharingReportList);
+
+        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
+                .thenReturn(sharingReportListOpt);
+
+        Count result = toTest.countSharingReports(aggregatorId, providerId, productClass, false);
+        Assert.assertEquals(2, (long) result.getSize());
     }
 
     @Test

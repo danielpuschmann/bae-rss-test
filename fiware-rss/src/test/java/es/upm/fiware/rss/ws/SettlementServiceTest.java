@@ -18,6 +18,7 @@ package es.upm.fiware.rss.ws;
 
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.RSSReport;
 import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
@@ -104,21 +105,45 @@ public class SettlementServiceTest {
     @Test
     public void reportsRetrieved() throws Exception {
         List<RSSReport> expResult = new ArrayList<>();
+        RSSReport rep = new RSSReport();
+
+        expResult.add(rep);
         String productClass = "productClass";
 
         when(userManager.getAllowedIds(
-                aggregatorId, providerId, "launch settlement")).thenReturn(ids);
+                aggregatorId, providerId, "RS reports")).thenReturn(ids);
 
         when(settlementManager.getSharingReports(
                 aggregatorId, effectiveProvider, productClass, false, 0, -1)).thenReturn(expResult);
 
         Response response = toTest.getReports(
-                aggregatorId, providerId, productClass, false, 0, -1);
+                aggregatorId, providerId, productClass, null, false, 0, -1);
 
         Assert.assertEquals(
                 Response.Status.OK.getStatusCode(), response.getStatus());
 
         List<RSSReport> resp = (List<RSSReport>) response.getEntity();
+        Assert.assertEquals(expResult, resp);
+    }
+
+    @Test
+    public void reportsCountRetrieved() throws Exception {
+        Count expResult = new Count();
+        String productClass = "productClass";
+
+        when(userManager.getAllowedIds(
+                aggregatorId, providerId, "RS reports")).thenReturn(ids);
+
+        when(settlementManager.countSharingReports(
+                aggregatorId, effectiveProvider, productClass, false)).thenReturn(expResult);
+
+        Response response = toTest.getReports(
+                aggregatorId, providerId, productClass, "count", false, 0, -1);
+
+        Assert.assertEquals(
+                Response.Status.OK.getStatusCode(), response.getStatus());
+
+        Count resp = (Count) response.getEntity();
         Assert.assertEquals(expResult, resp);
     }
 }

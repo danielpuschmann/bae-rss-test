@@ -149,7 +149,7 @@ public class SettlementManager {
                 List<RSSModel> models =
                         this.getModels(ag.getAggregatorId(), pv.getProviderId(), job.getProductClass());
 
-                for (RSSModel m: models) {
+                models.stream().forEach((m) -> {
                     // Get related transactions
                     List<DbeTransaction> txs = this.transactionDao.
                             getTransactions(m.getAggregatorId(), m.getOwnerProviderId(), m.getProductClass());
@@ -164,7 +164,7 @@ public class SettlementManager {
 
                         poolManager.submitTask(settlementTask, job.getCallbackUrl());
                     }
-                }
+                });
             }
         }
         poolManager.closeTaskPool(job.getCallbackUrl());
@@ -179,10 +179,12 @@ public class SettlementManager {
     public void setTxState(List<DbeTransaction> transactions,
             String state, boolean toFlush) {
 
-        for (DbeTransaction tx: transactions) {
+        transactions.stream().map((tx) -> {
             tx.setState(state);
+            return tx;
+        }).forEach((tx) -> {
             this.transactionDao.update(tx);
-        }
+        });
         // Flush state to the database
         if (toFlush) {
             this.transactionDao.flush();
@@ -216,23 +218,22 @@ public class SettlementManager {
         if (sharingRes.getStakeholders() != null) {
             Set<ReportProvider> stakeholders = new HashSet<>();
 
-            for (StakeholderModel stakeholderModel: sharingRes.getStakeholders()) {
+            sharingRes.getStakeholders().stream().map((stakeholderModel) -> {
                 DbeAppProvider stakeholder = this.appProviderDao.
                         getProvider(sharingRes.getAggregatorId(), stakeholderModel.getStakeholderId());
-
                 // Build stakeholder id
                 ReportProviderId stModelId = new ReportProviderId();
                 stModelId.setStakeholder(stakeholder);
                 stModelId.setReport(report);
-
                 // Build stakeholder
                 ReportProvider stModel = new ReportProvider();
                 stModel.setId(stModelId);
                 stModel.setModelValue(stakeholderModel.getModelValue());
-
+                return stModel;
+            }).forEach((stModel) -> {
                 // Add stakeholder to the set
                 stakeholders.add(stModel);
-            }
+            });
 
             report.setStakeholders(stakeholders);
         }
@@ -248,18 +249,43 @@ public class SettlementManager {
         this.sharingReportDao.create(report);
 
         // Save stakeholders info
-        for(ReportProvider st: report.getStakeholders()) {
+        report.getStakeholders().stream().forEach((st) -> {
             this.reportProviderDao.create(st);
-        }
+        });
+    }
+
+    /**
+     * Get the number of revenue sharing reports that fit the provided filters
+     *
+     * @param aggregator, aggregator of the returned sharing reports, used to filter the results
+     * @param provider, provider of the returned sharing reports, used to filter the results
+     * @param productClass, Product class of the returned sharing reports, used to filter the results
+     * @param onlyPaid, If true, the result will only contain paid reports
+     * @return Count object with the number of reports
+     */
+    public Count countSharingReports(
+            String aggregator, String provider, String productClass, boolean onlyPaid) {
+
+        Optional<List<SharingReport>> dbReports = this.sharingReportDao.
+                getSharingReportsByParameters(aggregator, provider, productClass, onlyPaid, 0, -1);
+
+        Count count = new Count();
+        Integer resSize = dbReports.isPresent() ? dbReports.get().size() : 0;
+        count.setSize(resSize);
+
+        return  count;
     }
 
     /**
      * Get the generated sharing reports filtered by some parameters.
      *
-     * @param aggregator, aggregator of the returned sharing reports
-     * @param provider, provider of the returned sharing reports
-     * @param productClass, Product class of the returned sharing reports
-     * @return
+     * @param aggregator, aggregator of the returned sharing reports, used to filter the results
+     * @param provider, provider of the returned sharing reports, used to filter the results
+     * @param productClass, Product class of the returned sharing reports, used to filter the results
+     * @param onlyPaid, If true, the result will only contain paid reports
+     * @param offset, First element to be returned, used for paginating the results
+     * @param size, Number of elements ti be returned, used for paginating the results
+     * @return List of RSSReport objects
      */
     public List<RSSReport> getSharingReports(
             String aggregator, String provider, String productClass, boolean onlyPaid, int offset, int size) {
