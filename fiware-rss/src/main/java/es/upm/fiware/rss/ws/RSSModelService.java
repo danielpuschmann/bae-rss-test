@@ -47,6 +47,7 @@ import es.upm.fiware.rss.service.AggregatorManager;
 import es.upm.fiware.rss.service.ProviderManager;
 import es.upm.fiware.rss.service.UserManager;
 import java.util.Map;
+import javax.ws.rs.DefaultValue;
 
 /**
  * 
@@ -76,20 +77,28 @@ public class RSSModelService {
     private UserManager userManager;
 
     /**
-     * Get Rss Models.
+     * API for retrieving Rss Models. The final list of models can be filtered
+     * according to its owner and the product class.
      * 
-     * @param appProvider
-     * @param productClass
-     * @param aggregatorId
-     * @return
+     * @param appProvider Provider owner of the RS Models to be returned
+     * @param productClass Product class of the RS models to be returned
+     * @param aggregatorId Aggregator owner of the RS models to be returned
+     * @param action If count, the number of elements instead of the list is returned
+     * @param offset First element to be returned, is used for paginating the results
+     * @param size Number of elements to be returned, is used for paginating the results
+     * @return Response object with the list of RS models
      * @throws Exception
      */
     @WebMethod
     @GET
     @Path("/")
-    public Response getRssModels(@QueryParam("providerId") String appProvider,
-        @QueryParam("productClass") String productClass,
-        @QueryParam("aggregatorId") String aggregatorId)
+    public Response getRssModels(
+            @QueryParam("providerId") String appProvider,
+            @QueryParam("productClass") String productClass,
+            @QueryParam("aggregatorId") String aggregatorId,
+            @QueryParam("action") String action,
+            @DefaultValue("0") @QueryParam("offset") int offset,
+            @DefaultValue("-1") @QueryParam("size") int size)
         throws Exception {
 
         RSSModelService.logger.debug("Into getRssModels()");
@@ -98,7 +107,7 @@ public class RSSModelService {
 
         // Call service
         List<RSSModel> rssModels = rssModelsManager.getRssModels(
-                ids.get("aggregator"), ids.get("provider"), productClass);
+                ids.get("aggregator"), ids.get("provider"), productClass, offset, size);
 
         // Response
         ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());

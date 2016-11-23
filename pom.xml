@@ -20,8 +20,8 @@
         <pathToFilters>.</pathToFilters>
         <tomcat.home>/usr/share/tomcat${tomcat.version}</tomcat.home>  
         
-        <rss.version>4.4.3</rss.version>        
-        <core.version>4.4.3</core.version>
+        <rss.version>5.4.1</rss.version>
+        <core.version>5.4.1</core.version>
         
         <jdk.version>1.8</jdk.version>
         <maven.version>3.2.5</maven.version>

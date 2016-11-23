@@ -49,6 +49,9 @@ import es.upm.fiware.rss.model.RSSModel;
 import es.upm.fiware.rss.model.SetRevenueShareConf;
 import es.upm.fiware.rss.model.SetRevenueShareConfId;
 import es.upm.fiware.rss.model.StakeholderModel;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(rollbackFor = Exception.class)
@@ -86,15 +89,10 @@ public class RSSModelsManager {
      * @return true if the model identified by aggregatorId, providerId and productClass exists
      */
     public boolean existModel(String aggregatorId, String providerId, String productClass) {
-        boolean res = true;
-
-        List<SetRevenueShareConf> result = revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
+        Optional<List<SetRevenueShareConf>> result = revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
             providerId, productClass);
 
-        if (null == result || result.isEmpty()) {
-            res = false;
-        }
-        return res;
+        return result.isPresent();
     }
 
     /**
@@ -104,11 +102,13 @@ public class RSSModelsManager {
      * @param aggregatorId, Id of the aggregator
      * @param appProviderId, Id if the provider owener of the revenue sharing models
      * @param productClass, Product class where the models are applied
+     * @param offset First element to be returned, is used for paginating the results
+     * @param size Number of elements to be returned, is used for paginating the results
      * @return
      * @throws RSSException
      */
     public List<RSSModel> getRssModels(String aggregatorId, String appProviderId,
-            String productClass) throws RSSException {
+            String productClass, int offset, int size) throws RSSException {
         logger.debug("Into getRssModels() method");
 
         // Validate owner provider
@@ -116,17 +116,16 @@ public class RSSModelsManager {
             checkValidAppProvider(aggregatorId, appProviderId);
         }
 
-        List<RSSModel> models = new ArrayList<>();
-        List<SetRevenueShareConf> result = revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-            appProviderId, productClass);
+        Optional<List<SetRevenueShareConf>> result = revenueShareConfDao
+                .getPagedRevenueModelsByParameters(
+                        aggregatorId, appProviderId, productClass, offset, size);
 
         // convert result to api model.
-        if (null != result && !result.isEmpty()) {
-            result.stream().forEach((model) -> {
-                models.add(convertIntoApiModel(model));
-            });
-        }
-        return models;
+        return result.map(res -> 
+            res.stream().map((model) -> {
+                return convertIntoApiModel(model);
+            }).collect(Collectors.toList())
+        ).orElse(Collections.emptyList());
     }
 
     private SetRevenueShareConfId buildRSModelId(RSSModel rssModel) {
@@ -209,12 +208,10 @@ public class RSSModelsManager {
         // check valid rssModel
         checkValidRSSModel(rssModel);
 
-        List <SetRevenueShareConf> prevModels = this.revenueShareConfDao
-                .getRevenueModelsByParameters(
-                        rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
+        if (this.existModel(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass())) {
 
-        if (prevModels != null && prevModels.size() > 0) {
-            String[] args = {"A model with the same Product Class already exists"};
+            String[] args = {"Revenue Sharing model with class " + rssModel.getProductClass()};
             throw new RSSException(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, args);
         }
 
@@ -307,23 +304,25 @@ public class RSSModelsManager {
         }
 
         // Get models
-        List<SetRevenueShareConf> result = revenueShareConfDao.getRevenueModelsByParameters(aggregatorId,
-            appProviderId, productClass);
+        Optional<List<SetRevenueShareConf>> result = revenueShareConfDao
+                .getRevenueModelsByParameters(aggregatorId, appProviderId, productClass);
 
         // Remove models
-        if (null != result && !result.isEmpty()) {
-            result.stream().map((model) -> {
-                // Remove Stakeholders
+        List<SetRevenueShareConf> models = result.map(res ->
+            res.stream().map((model) -> {
+            // Remove Stakeholders
                 if (null != model.getStakeholders()) {
                     model.getStakeholders().stream().forEach((st) -> {
                         modelProviderDao.delete(st);
                     });
                 }
                 return model;
-            }).forEach((model) -> {
-                revenueShareConfDao.delete(model);
-            });
-        }
+            }).collect(Collectors.toList())
+        ).orElse(Collections.emptyList());
+
+        models.stream().forEach((model) -> {
+            revenueShareConfDao.delete(model);
+        });
     }
 
     /**

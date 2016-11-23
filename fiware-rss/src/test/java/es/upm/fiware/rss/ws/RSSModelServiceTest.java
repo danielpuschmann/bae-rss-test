@@ -72,9 +72,9 @@ public class RSSModelServiceTest {
     public void getRSSModels () throws Exception {
         List<RSSModel> rssModels = new LinkedList<>();
         when(rssModelsManager.getRssModels(
-                this.aggregator, this.provider, this.productClass)).thenReturn(rssModels);
+                this.aggregator, this.provider, this.productClass, 0, -1)).thenReturn(rssModels);
 
-        Response response = toTest.getRssModels(null, productClass, null);
+        Response response = toTest.getRssModels(null, productClass, null, null, 0, -1);
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(rssModels, response.getEntity());
     }

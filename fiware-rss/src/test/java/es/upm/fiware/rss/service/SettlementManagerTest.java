@@ -165,7 +165,7 @@ public class SettlementManagerTest {
         when(modelsManager.existModel(aggregatorId, providerId, productClass)).thenReturn(Boolean.TRUE);
         when(aggregatorManager.getAggregator(aggregatorId)).thenReturn(aggregator);
         when(providerManager.getProvider(aggregatorId, providerId)).thenReturn(rSSProvider);
-        when(modelsManager.getRssModels(aggregatorId, providerId, productClass)).thenReturn(models);
+        when(modelsManager.getRssModels(aggregatorId, providerId, productClass, 0, -1)).thenReturn(models);
     }
 
     @Test
@@ -238,10 +238,10 @@ public class SettlementManagerTest {
         List<RSSModel> models3 = this.buildModels("aggregator2@email.com", "provider3", "class5", "class6");
         List<RSSModel> models4 = this.buildModels("aggregator2@email.com", "provider4", "class7", "class8");
         
-        when(modelsManager.getRssModels("aggregator1@email.com", "provider1", null)).thenReturn(models1);
-        when(modelsManager.getRssModels("aggregator1@email.com", "provider2", null)).thenReturn(models2);
-        when(modelsManager.getRssModels("aggregator2@email.com", "provider3", null)).thenReturn(models3);
-        when(modelsManager.getRssModels("aggregator2@email.com", "provider4", null)).thenReturn(models4);
+        when(modelsManager.getRssModels("aggregator1@email.com", "provider1", null, 0, -1)).thenReturn(models1);
+        when(modelsManager.getRssModels("aggregator1@email.com", "provider2", null, 0, -1)).thenReturn(models2);
+        when(modelsManager.getRssModels("aggregator2@email.com", "provider3", null, 0, -1)).thenReturn(models3);
+        when(modelsManager.getRssModels("aggregator2@email.com", "provider4", null, 0, -1)).thenReturn(models4);
         
         // Mock Transactions
         List<ProductSettlementTask> tasks = new ArrayList<>();

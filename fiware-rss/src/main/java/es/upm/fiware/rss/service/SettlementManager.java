@@ -112,7 +112,7 @@ public class SettlementManager {
     private List<RSSModel> getModels(String aggregatorId,
             String providerId, String productClass) throws RSSException {
 
-        return this.modelsManager.getRssModels(aggregatorId, providerId, productClass);
+        return this.modelsManager.getRssModels(aggregatorId, providerId, productClass, 0, -1);
     }
 
     /**
