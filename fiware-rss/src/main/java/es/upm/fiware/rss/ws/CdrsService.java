@@ -44,6 +44,8 @@ import es.upm.fiware.rss.service.UserManager;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.CDR;
+import es.upm.fiware.rss.model.Count;
+import javax.ws.rs.DefaultValue;
 
 
 @WebService(serviceName = "cdrs", name = "cdrs")
@@ -88,17 +90,28 @@ public class CdrsService {
     @WebMethod
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getCDRs(@QueryParam("aggregatorId") String aggregatorId,
-            @QueryParam("providerId") String providerId) throws Exception {
+    public Response getCDRs(
+            @QueryParam("aggregatorId") String aggregatorId,
+            @QueryParam("providerId") String providerId,
+            @QueryParam("action") String action,
+            @DefaultValue("0") @QueryParam("offset") int offset,
+            @DefaultValue("-1") @QueryParam("size") int size) throws Exception {
 
         logger.debug("getCDRs GET start");
 
+        Object entity;
         Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, providerId, "transactions");
 
-        List<CDR> resp = this.cdrsManager.getCDRs(ids.get("aggregator"), ids.get("provider"));
+        if (action != null && action.equalsIgnoreCase("count")) {
+            entity = (Count) this.cdrsManager.countCDRs(
+                    ids.get("aggregator"), ids.get("provider"));
+        } else {
+            entity = (List<CDR>) this.cdrsManager.getCDRs(
+                    ids.get("aggregator"), ids.get("provider"), offset, size);
+        }
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
-        rb.entity(resp);
+        rb.entity(entity);
         return rb.build();
     }
 }

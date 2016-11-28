@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.model.CDR;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.CdrsManager;
 import es.upm.fiware.rss.service.UserManager;
@@ -66,7 +67,7 @@ public class CdrsServiceTest {
     }
 
     @Test
-    public void createCdr() throws Exception {
+    public void shouldCreateCDRUserAdmin() throws Exception {
         List <CDR> list = new LinkedList<>();
         when(userManager.isAdmin()).thenReturn(true);
 
@@ -75,7 +76,7 @@ public class CdrsServiceTest {
     }
 
     @Test
-    public void createCdrNotAllowed() throws Exception {
+    public void throesExceptionWhenUserNoPermission() throws Exception {
         List<CDR> list = new LinkedList<>();
 
         try {
@@ -87,21 +88,38 @@ public class CdrsServiceTest {
         }
     }
 
-    @Test
-    public void getProviderCDRs() throws Exception {
-        List <CDR> list = new LinkedList<>();
-        when(cdrsManager.getCDRs(this.aggregatorId, this.providerId)).thenReturn(list);
-
+    private void mockIds() throws RSSException{
         Map<String, String> ids = new HashMap<>();
         ids.put("provider", this.providerId);
         ids.put("aggregator", this.aggregatorId);
 
         when(this.userManager.getAllowedIds(
                 this.aggregatorId, this.providerId, "transactions")).thenReturn(ids);
+    }
 
-        Response response = toTest.getCDRs(this.aggregatorId, this.providerId);
+    @Test
+    public void shouldReturnAListOfCDRs() throws Exception {
+        List <CDR> list = new LinkedList<>();
+        when(cdrsManager.getCDRs(this.aggregatorId, this.providerId, 0, -1)).thenReturn(list);
+
+        this.mockIds();
+
+        Response response = toTest.getCDRs(this.aggregatorId, this.providerId, null, 0, -1);
 
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(list, response.getEntity());
+    }
+    
+    @Test
+    public void shouldReturnTheCountOfCDRs() throws Exception {
+        Count count = new Count();
+        when(cdrsManager.countCDRs(this.aggregatorId, this.providerId)).thenReturn(count);
+
+        this.mockIds();
+
+        Response response = toTest.getCDRs(this.aggregatorId, this.providerId, "count", 0, -1);
+
+        Assert.assertEquals(200, response.getStatus());
+        Assert.assertEquals(count, response.getEntity());
     }
 }

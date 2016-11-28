@@ -24,6 +24,7 @@ import java.util.List;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.model.DbeTransaction;
 import java.math.BigDecimal;
+import java.util.Optional;
 
 /**
  * 
@@ -79,5 +80,9 @@ public interface DbeTransactionDao extends GenericDao<DbeTransaction, String> {
 
     List<DbeTransaction> getTransactionByAggregatorId(String aggregatorId);
 
-    List<DbeTransaction> getTransactions(String aggregatorId, String providerId, String productClass);
+    Optional<List<DbeTransaction>> getTransactions(
+            String aggregatorId, String providerId, String productClass);
+    
+    Optional<List<DbeTransaction>> getPagedTransactions(
+            String aggregatorId, String providerId, String productClass, int offset, int size);
 }

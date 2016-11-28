@@ -151,16 +151,16 @@ public class SettlementManager {
 
                 models.stream().forEach((m) -> {
                     // Get related transactions
-                    List<DbeTransaction> txs = this.transactionDao.
+                    Optional<List<DbeTransaction>> txs = this.transactionDao.
                             getTransactions(m.getAggregatorId(), m.getOwnerProviderId(), m.getProductClass());
 
                     // Set transactions as processing
-                    if (txs != null && !txs.isEmpty()) {
-                        this.setTxState(txs, "processing", true);
+                    if (txs.isPresent() && !txs.get().isEmpty()) {
+                        this.setTxState(txs.get(), "processing", true);
 
                         // Create processing task
                         ProductSettlementTask settlementTask
-                                = this.taskFactory.getSettlementTask(m, txs, job.getCallbackUrl());
+                                = this.taskFactory.getSettlementTask(m, txs.get(), job.getCallbackUrl());
 
                         poolManager.submitTask(settlementTask, job.getCallbackUrl());
                     }

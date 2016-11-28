@@ -29,12 +29,15 @@ import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.BmCurrency;
 import es.upm.fiware.rss.model.CDR;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeTransaction;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,9 +79,8 @@ public class CdrsManager {
     private List<CDR> getCDRsAPIFormat(List<DbeTransaction> txs) {
         List<CDR> result = new ArrayList<>();
 
-        for (DbeTransaction tx: txs) {
+        txs.stream().map((tx) -> {
             CDR cdr = new CDR();
-
             cdr.setAppProvider(tx.getAppProvider().getId().getTxAppProviderId());
             cdr.setApplication(tx.getTxApplicationId());
             cdr.setCdrSource(tx.getCdrSource().getTxEmail());
@@ -93,32 +95,44 @@ public class CdrsManager {
             cdr.setReferenceCode(tx.getTxReferenceCode());
             cdr.setTimestamp(tx.getTsClientDate());
             cdr.setTransactionType(tx.getTcTransactionType());
-
+            return cdr;
+        }).forEach((cdr) -> {
             result.add(cdr);
-        }
+        });
         return result;
     }
 
     /**
+     * Retrived the number of available transactions filtered by agreggator and
+     * provider
+     * @param aggregatorId, id of the aggregator used to filter the list
+     * @param providerId, id of the provider used to filter the list
+     * @return Count object
+     */
+    public Count countCDRs(String aggregatorId, String providerId) {
+        Optional<List<DbeTransaction>> optRes = this.transactionDao
+                .getTransactions(aggregatorId, providerId, null);
+
+        Count result = new Count();
+        result.setSize(optRes.isPresent() ? optRes.get().size(): 0);
+
+        return result;
+    }
+    /**
      * Retrieve existing transactions filtered by aggregator and provider
      * @param aggregatorId, id of the aggregator used to filter the list
      * @param providerId, id of the provider used to filter the list
+     * @param offset First elewment to be retrieved, used for paging
+     * @param size Number of elements to be retrieved, used for paging
      * @return List of CDRs 
      */
-    public List<CDR> getCDRs(String aggregatorId, String providerId) {
-        List<CDR> result;
+    public List<CDR> getCDRs(String aggregatorId, String providerId, int offset, int size) {
+        Optional<List<DbeTransaction>> optRes = this.transactionDao
+                .getPagedTransactions(aggregatorId, providerId, null, offset, size);
 
-        // Retrieve all pending transactions
-        if (aggregatorId == null && providerId == null) {
-            result = this.getCDRsAPIFormat(this.transactionDao.getTransactions(null, null, null));
-        } else if (providerId == null) {
-            result = this.getCDRsAPIFormat(
-                    this.transactionDao.getTransactions(aggregatorId, null, null));
-        } else {
-            result = this.getCDRsAPIFormat(
-                    this.transactionDao.getTransactions(aggregatorId, providerId, null));
-        }
-        return result;
+        return optRes.map(txs ->
+            this.getCDRsAPIFormat(txs)
+        ).orElse(Collections.emptyList());
     }
 
     /**
@@ -141,7 +155,7 @@ public class CdrsManager {
             DbeAggregator aggregator = this.aggregatorDao.getById(cdr.getCdrSource());
 
             if (aggregator ==  null) {
-                String[] args = {"The Store identified by  " + cdr.getCdrSource() + " does not exists"};
+                String[] args = {"Aggregator (" + cdr.getCdrSource() + ")"};
                 throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
             }
 
@@ -153,14 +167,14 @@ public class CdrsManager {
             BmCurrency currency = this.currencyDao.getByIso4217StringCode(cdr.getCurrency());
 
             if (currency == null)  {
-                String[] args = {"The currency  " + cdr.getCurrency() + " is not supported"};
+                String[] args = {"currency (" + cdr.getCurrency() + ")"};
                 throw new RSSException(UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, args);
             }
 
             // Validate correlation number and timestamp
             Integer nextCorr = provider.getTxCorrelationNumber();
             if (!nextCorr.equals(cdr.getCorrelationNumber())) {
-                String[] args = {"Invalid correlation number, expected: " + nextCorr};
+                String[] args = {"Invalid correlation number, expected " + nextCorr};
                 throw new RSSException(UNICAExceptionType.INVALID_PARAMETER, args);
             }
 
@@ -168,7 +182,7 @@ public class CdrsManager {
 
             Date prevTime = provider.getTxTimeStamp();
             if (cdr.getTimestamp() == null || prevTime.after(cdr.getTimestamp())) {
-                String[] args = {"Invalid timestamp: The given time is earlier that the prevoius one"};
+                String[] args = {"Invalid timestamp, the given time is earlier that the prevoius one"};
                 throw new RSSException(UNICAExceptionType.INVALID_PARAMETER, args);
             }
 
@@ -187,12 +201,12 @@ public class CdrsManager {
             DbeTransaction tx = new DbeTransaction();
 
             if (cdr.getProductClass() == null || cdr.getProductClass().isEmpty()) {
-                String[] args = {"Missing productClass"};
+                String[] args = {"productClass"};
                 throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
             }
 
             if (cdr.getReferenceCode() == null || cdr.getReferenceCode().isEmpty()) {
-                String[] args = {"Missing referenceCode"};
+                String[] args = {"referenceCode"};
                 throw new RSSException(UNICAExceptionType.MISSING_MANDATORY_PARAMETER, args);
             }
 

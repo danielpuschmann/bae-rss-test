@@ -143,20 +143,21 @@ public class SettlementManagerTest {
         return mods;
     }
 
-    private List<DbeTransaction> buildTransactions() {
+    private Optional<List<DbeTransaction>> buildTransactions() {
         List <DbeTransaction> transactions = new LinkedList<>();
         DbeTransaction transaction = new DbeTransaction();
         transactions.add(transaction);
-        return transactions;
+
+        return Optional.of(transactions);
     }
 
     private ProductSettlementTask buildTask(RSSModel model) {
-        List<DbeTransaction> tx1 = this.buildTransactions();
+        Optional<List<DbeTransaction>> tx1 = this.buildTransactions();
         when(transactionDao.getTransactions(model.getAggregatorId(), model.getOwnerProviderId(), model.getProductClass()))
                 .thenReturn(tx1);
         
         ProductSettlementTask t1 = new ProductSettlementTask();
-        when(taskFactory.getSettlementTask(model, tx1, callbackUrl)).thenReturn(t1);
+        when(taskFactory.getSettlementTask(model, tx1.get(), callbackUrl)).thenReturn(t1);
         
         return t1;
     }
@@ -174,14 +175,14 @@ public class SettlementManagerTest {
      * provider product class
      */
     public void testRunSettlementProviderTx() throws RSSException {
-        List <DbeTransaction> transactions = this.buildTransactions();
+        Optional<List <DbeTransaction>> transactions = this.buildTransactions();
 
         // Create Mocks
         this.mockSingleModel();
         when(transactionDao.getTransactions(aggregatorId, providerId, productClass)).thenReturn(transactions);
 
         ProductSettlementTask settlementTask = new ProductSettlementTask();
-        when(taskFactory.getSettlementTask(model, transactions, callbackUrl)).thenReturn(settlementTask);
+        when(taskFactory.getSettlementTask(model, transactions.get(), callbackUrl)).thenReturn(settlementTask);
 
         // Execute method
         toTest.runSettlement(job);
@@ -200,6 +201,7 @@ public class SettlementManagerTest {
     public void testRunSettlementProviderNoTransactions() throws RSSException {
         // Create Mocks
         this.mockSingleModel();
+        when(transactionDao.getTransactions(aggregatorId, providerId, productClass)).thenReturn(Optional.empty());
         
         // Execute Mwethod
         toTest.runSettlement(job);
@@ -210,7 +212,6 @@ public class SettlementManagerTest {
         verify(poolManager).closeTaskPool(callbackUrl);
     }
     
-
     /*
      * Verifies the run settlement process for all pending transactions
      */
