@@ -33,11 +33,14 @@ import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeTransaction;
+import es.upm.fiware.rss.model.ProductClasses;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +106,7 @@ public class CdrsManager {
     }
 
     /**
-     * Retrived the number of available transactions filtered by agreggator and
+     * Retrieve the number of available transactions filtered by agreggator and
      * provider
      * @param aggregatorId, id of the aggregator used to filter the list
      * @param providerId, id of the provider used to filter the list
@@ -118,6 +121,32 @@ public class CdrsManager {
 
         return result;
     }
+    
+    /**
+     * Retrieve the list of product classes  included in the transactions
+     * filtered by agreggator and provider
+     * @param aggregatorId, id of the aggregator used to filter the list
+     * @param providerId, id of the provider used to filter the list
+     * @return ProductClasses object
+     */
+    public ProductClasses getCDRClasses(String aggregatorId, String providerId) {
+        Optional<List<DbeTransaction>> optRes = this.transactionDao
+                .getTransactions(aggregatorId, providerId, null);
+
+        List<String> classes = optRes.map(txs ->
+
+            txs.stream().map(tx ->
+                tx.getTxProductClass()
+            ).distinct()
+             .collect(Collectors.toList())
+
+        ).orElse(Collections.emptyList());
+
+        ProductClasses result = new ProductClasses();
+        result.setProductClasses(classes);
+        return result;
+    }
+
     /**
      * Retrieve existing transactions filtered by aggregator and provider
      * @param aggregatorId, id of the aggregator used to filter the list

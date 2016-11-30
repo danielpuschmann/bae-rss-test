@@ -21,7 +21,6 @@
 
 package es.upm.fiware.rss.service;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.dao.CurrencyDao;
@@ -37,6 +36,7 @@ import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeAppProviderId;
 import es.upm.fiware.rss.model.DbeTransaction;
+import es.upm.fiware.rss.model.ProductClasses;
 import es.upm.fiware.rss.model.RSUser;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -413,5 +413,43 @@ public class CdrsManagerTest {
 
         Count result = this.cdrsManager.countCDRs(aggregatorId, providerId);
         Assert.assertEquals(0, (long) result.getSize());
+    }
+
+    @Test
+    public void shouldReturnTheListtOfProductClasses() throws RSSException {
+        List<DbeTransaction> txResp = new ArrayList<>();
+        DbeTransaction tx1 = new DbeTransaction();
+        tx1.setTxProductClass("productClass1");
+        txResp.add(tx1);
+
+        DbeTransaction tx2 = new DbeTransaction();
+        tx2.setTxProductClass("productClass2");
+        txResp.add(tx2);
+
+        DbeTransaction tx3 = new DbeTransaction();
+        tx3.setTxProductClass("productClass1");
+        txResp.add(tx3);
+
+        when(this.transactionDao
+                .getTransactions(aggregatorId, providerId, null))
+                .thenReturn(Optional.of(txResp));
+
+        ProductClasses result = this.cdrsManager.getCDRClasses(aggregatorId, providerId);
+
+        Assert.assertEquals(2, result.getProductClasses().size());
+        Assert.assertTrue((result.getProductClasses().get(0).equals("productClass1")
+                && result.getProductClasses().get(1).equals("productClass2")) ||
+                (result.getProductClasses().get(0).equals("productClass2")
+                && result.getProductClasses().get(1).equals("productClass1")));
+    }
+
+    @Test
+    public void shouldReturnEmptyListProductClasses() throws RSSException {
+        when(this.transactionDao
+                .getTransactions(aggregatorId, providerId, null))
+                .thenReturn(Optional.empty());
+
+        ProductClasses result = this.cdrsManager.getCDRClasses(aggregatorId, providerId);
+        Assert.assertTrue(result.getProductClasses().isEmpty());
     }
 }

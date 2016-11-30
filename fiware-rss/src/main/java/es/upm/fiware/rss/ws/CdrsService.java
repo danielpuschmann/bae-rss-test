@@ -45,6 +45,7 @@ import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.CDR;
 import es.upm.fiware.rss.model.Count;
+import es.upm.fiware.rss.model.ProductClasses;
 import javax.ws.rs.DefaultValue;
 
 
@@ -109,6 +110,22 @@ public class CdrsService {
             entity = (List<CDR>) this.cdrsManager.getCDRs(
                     ids.get("aggregator"), ids.get("provider"), offset, size);
         }
+
+        Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
+        rb.entity(entity);
+        return rb.build();
+    }
+
+    @WebMethod
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/classes")
+    public Response getClasses(
+            @QueryParam("aggregatorId") String aggregatorId,
+            @QueryParam("providerId") String providerId) throws Exception {
+
+        Map<String, String> ids = this.userManager.getAllowedIds(aggregatorId, providerId, "transactions");
+        ProductClasses entity = this.cdrsManager.getCDRClasses(ids.get("aggregator"), ids.get("provider"));
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
         rb.entity(entity);

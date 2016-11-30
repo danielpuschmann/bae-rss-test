@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.model.CDR;
 import es.upm.fiware.rss.model.Count;
+import es.upm.fiware.rss.model.ProductClasses;
 import es.upm.fiware.rss.model.RSUser;
 import es.upm.fiware.rss.service.CdrsManager;
 import es.upm.fiware.rss.service.UserManager;
@@ -121,5 +122,18 @@ public class CdrsServiceTest {
 
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(count, response.getEntity());
+    }
+
+    @Test
+    public void shouldReturnAListOfProductClasses() throws Exception {
+        ProductClasses classes = new ProductClasses();
+        when(cdrsManager.getCDRClasses(this.aggregatorId, this.providerId)).thenReturn(classes);
+
+        this.mockIds();
+
+        Response response = toTest.getClasses(this.aggregatorId, this.providerId);
+
+        Assert.assertEquals(200, response.getStatus());
+        Assert.assertEquals(classes, response.getEntity());
     }
 }
