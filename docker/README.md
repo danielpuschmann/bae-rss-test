@@ -64,7 +64,7 @@ docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=r
 Once that the database is configured, you can deploy the image by running the following command:
 
 ```
-docker run -e MYSQL_DBUSR=root -e MYSQL_DBPASSWORD=my-secret-pw -e MYSQL_HOST=rss_db -p PORT:8080 --link rss_db rss
+docker run -e MYSQL_DBUSR=root -e MYSQL_DBPASSWORD=my-secret-pw -e MYSQL_HOST=rss_db -p PORT:8080 --link rss_db conwetlab/biz-ecosystem-rss
 ```
 **Note**: You can change the values of the MySQL connection (database password, and database host), but they must be same as the used when running the MySQL container. 
 
