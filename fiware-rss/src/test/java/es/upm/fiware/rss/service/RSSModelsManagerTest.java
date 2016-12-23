@@ -33,6 +33,7 @@ import es.upm.fiware.rss.dao.SetRevenueShareConfDao;
 import es.upm.fiware.rss.exception.InterfaceExceptionType;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
 import es.upm.fiware.rss.model.DbeAppProviderId;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.Assert;
 import org.junit.Before;
@@ -58,6 +60,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.isA;
 import org.mockito.MockitoAnnotations;
 
 public class RSSModelsManagerTest {
@@ -81,7 +84,7 @@ public class RSSModelsManagerTest {
         String aggregatorId = "aggregator@mail.com";
         String algorithmType = "FIXED_PERCENTAGE";
         String ownerProviderId = "provider@mail.com";
-        String productClass = "productClass@mail.com";
+        String productClass = "productClass";
         String stakeholderId = "stakeholder@mail.com";
 
         List <StakeholderModel> holdersModel = new LinkedList<>();
@@ -98,6 +101,11 @@ public class RSSModelsManagerTest {
         rssModel.setOwnerValue(BigDecimal.valueOf(30));
         rssModel.setProductClass(productClass);
         rssModel.setStakeholders(holdersModel);
+
+        // Build default return valid for get revenue models method
+        Optional<List<SetRevenueShareConf>> optional = Optional.empty();
+        when(revenueShareConfDao.getRevenueModelsByParameters(
+                isA(String.class), isA(String.class), isA(String.class))).thenReturn(optional);
     }
 
     private DbeAppProvider mockGetProvider(String aggregatorId, String providerId) {
@@ -355,16 +363,18 @@ public class RSSModelsManagerTest {
         List<SetRevenueShareConf> models = new ArrayList<>();
         models.add(this.buildDatabaseRSModel());
 
+        Optional<List<SetRevenueShareConf>> modelsOpt = Optional.of(models);
+
         when(this.revenueShareConfDao.getRevenueModelsByParameters(
                 rssModel.getAggregatorId(), rssModel.getOwnerProviderId(),
-                rssModel.getProductClass())).thenReturn(models);
+                rssModel.getProductClass())).thenReturn(modelsOpt);
 
         try {
             this.toTest.createRssModel(rssModel);
             Assert.fail();
         } catch (RSSException e) {
             Assert.assertEquals(UNICAExceptionType.RESOURCE_ALREADY_EXISTS, e.getExceptionType());
-            Assert.assertEquals("Resource already exists: A model with the same Product Class already exists", e.getMessage());
+            Assert.assertEquals("Resource already exists: Revenue Sharing model with class productClass", e.getMessage());
         }
     }
 
@@ -381,9 +391,11 @@ public class RSSModelsManagerTest {
         SetRevenueShareConf dbModel = this.buildDatabaseRSModel();
         models.add(dbModel);
 
+        Optional<List<SetRevenueShareConf>> modelsOpt = Optional.of(models);
+
         when(this.revenueShareConfDao.getRevenueModelsByParameters(
                 rssModel.getAggregatorId(), rssModel.getOwnerProviderId(),
-                rssModel.getProductClass())).thenReturn(models);
+                rssModel.getProductClass())).thenReturn(modelsOpt);
 
         toTest.deleteRssModel(rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
@@ -444,27 +456,15 @@ public class RSSModelsManagerTest {
         List <SetRevenueShareConf> revenueShareConfs = mock(LinkedList.class);
         when(revenueShareConfs.isEmpty()).thenReturn(false);
 
+        Optional<List<SetRevenueShareConf>> modelsOpt = Optional.of(revenueShareConfs);
+
         when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
-                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(revenueShareConfs);
+                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(modelsOpt);
 
         boolean returned = toTest.existModel(rssModel.getAggregatorId(),
                 rssModel.getOwnerProviderId(), rssModel.getProductClass());
 
         Assert.assertTrue(returned);
-    }
-
-    @Test
-    public void rsModelNotExistEmpty() {
-
-        List <SetRevenueShareConf> revenueShareConfs = new ArrayList<>();
-
-        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
-                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(revenueShareConfs);
-
-        boolean returned = toTest.existModel(rssModel.getAggregatorId(),
-                rssModel.getOwnerProviderId(), rssModel.getProductClass());
-
-        Assert.assertFalse(returned);
     }
 
     @Test
@@ -482,11 +482,13 @@ public class RSSModelsManagerTest {
         List<SetRevenueShareConf> models = new ArrayList<>();
         models.add(this.buildDatabaseRSModel());
 
-        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
-                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(models);
+        Optional<List<SetRevenueShareConf>> modelsOpt = Optional.of(models);
+
+        when(revenueShareConfDao.getPagedRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass(), 0, -1)).thenReturn(modelsOpt);
 
         List<RSSModel> result = toTest.getRssModels(rssModel.getAggregatorId(),
-                rssModel.getOwnerProviderId(), rssModel.getProductClass());
+                rssModel.getOwnerProviderId(), rssModel.getProductClass(), 0, -1);
 
         Assert.assertEquals(1, result.size());
         RSSModel model = result.get(0);
@@ -512,10 +514,39 @@ public class RSSModelsManagerTest {
     @Test
     public void getRssModelsNullArgumentsTest() throws RSSException {
         this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+
+        when(revenueShareConfDao.getPagedRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), null, 0, -1)).thenReturn(Optional.empty());
+
         List<RSSModel> result = toTest.getRssModels(rssModel.getAggregatorId(),
-                rssModel.getOwnerProviderId(), null);
+                rssModel.getOwnerProviderId(), null, 0, -1);
 
         Assert.assertTrue(result.isEmpty());
+    }
+
+    private void testCountRSModels(Optional mock, int exp) throws RSSException {
+        this.mockGetProvider(rssModel.getAggregatorId(), rssModel.getOwnerProviderId());
+        when(revenueShareConfDao.getRevenueModelsByParameters(rssModel.getAggregatorId(),
+                rssModel.getOwnerProviderId(), rssModel.getProductClass())).thenReturn(mock);
+
+        Count result = toTest.countRssModels(
+                rssModel.getAggregatorId(), rssModel.getOwnerProviderId(), rssModel.getProductClass());
+
+        Assert.assertEquals(exp, (long) result.getSize());
+    }
+
+    @Test
+    public void shouldCountTheAvailableRSModels() throws RSSException {
+        List<SetRevenueShareConf> models = new ArrayList<>();
+        models.add(this.buildDatabaseRSModel());
+
+        Optional<List<SetRevenueShareConf>> modelsOpt = Optional.of(models);
+        this.testCountRSModels(modelsOpt, 1);
+    }
+
+    @Test
+    public void showReturnCeroCountWithEmptyResult() throws RSSException {
+        this.testCountRSModels(Optional.empty(), 0);
     }
 
     @Test

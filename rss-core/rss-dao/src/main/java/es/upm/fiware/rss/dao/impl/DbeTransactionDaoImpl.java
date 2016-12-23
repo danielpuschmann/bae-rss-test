@@ -32,6 +32,7 @@ import org.springframework.stereotype.Repository;
 import es.upm.fiware.rss.dao.DbeTransactionDao;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.model.DbeTransaction;
+import java.util.Optional;
 
 /**
  * 
@@ -141,24 +142,15 @@ public class DbeTransactionDaoImpl extends GenericDaoImpl<DbeTransaction, String
     }
 
     @Override
-    public List<DbeTransaction> getTransactions(String aggregatorId,
-            String providerId, String productClass) {
+    public Optional<List<DbeTransaction>> getTransactions(
+            String aggregatorId, String providerId, String productClass) {
+        return this.buildGetTransactionsQuery(aggregatorId, providerId, productClass, 0, -1);
+    }
 
-        DbeTransactionDaoImpl.LOGGER.debug("getTransactionsByAggregatorId..");
-        String hql = "from DbeTransaction l where l.state='pending'";
-
-        if (aggregatorId != null && !aggregatorId.isEmpty()) {
-            hql += " and l.cdrSource.txEmail='" + aggregatorId + "'";
-
-            if (providerId != null && !providerId.isEmpty()) {
-                hql += " and l.appProvider.id.txAppProviderId='" + providerId + "'";
-
-                if (productClass != null && !productClass.isEmpty()) {
-                    hql += " and l.txProductClass='" + productClass + "'";
-                }
-            }
-        }
-        return listDbeTransactionQuery(hql);
+    @Override
+    public Optional<List<DbeTransaction>> getPagedTransactions(
+            String aggregatorId, String providerId, String productClass, int offset, int size) {
+        return this.buildGetTransactionsQuery(aggregatorId, providerId, productClass, offset, size);
     }
 
     /* Private Methods */
@@ -182,4 +174,44 @@ public class DbeTransactionDaoImpl extends GenericDaoImpl<DbeTransaction, String
         return resultList;
     }
 
+    private Optional<List<DbeTransaction>> buildGetTransactionsQuery(String aggregatorId,
+            String providerId, String productClass, int offset, int size) {
+        DbeTransactionDaoImpl.LOGGER.debug("getTransactionsByAggregatorId..");
+        String hql = "from DbeTransaction l where l.state='pending'";
+
+        if (aggregatorId != null && !aggregatorId.isEmpty()) {
+            hql += " and l.cdrSource.txEmail='" + aggregatorId + "'";
+
+            if (providerId != null && !providerId.isEmpty()) {
+                hql += " and l.appProvider.id.txAppProviderId='" + providerId + "'";
+
+                if (productClass != null && !productClass.isEmpty()) {
+                    hql += " and l.txProductClass='" + productClass + "'";
+                }
+            }
+        }
+        return listOptionalDbeTransactionQuery(hql, offset, size);
+    }
+
+    private Optional<List<DbeTransaction>> listOptionalDbeTransactionQuery(
+            String hql, int offset, int size) {
+
+        DbeTransactionDaoImpl.LOGGER.debug("listOptionalDbeTransactionQuery hql-->" + hql);
+        Optional<List<DbeTransaction>> resultList;
+        try {
+            Query q = this.getSession().createQuery(hql);
+            q.setFirstResult(Integer.max(offset, 0));  // If offset negative, set it as 0
+
+            if (size >= 0) {
+                q.setMaxResults(size);
+            }
+            
+            List list = q.list();
+            resultList = Optional.of(Collections.checkedList(list, DbeTransaction.class));
+        } catch (Exception e) {
+            DbeTransactionDaoImpl.LOGGER.error("Error db", e);
+            return Optional.empty();
+        }
+        return resultList;
+    }
 }

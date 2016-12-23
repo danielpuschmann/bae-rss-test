@@ -22,6 +22,7 @@ import java.util.List;
 
 import es.upm.fiware.rss.model.SetRevenueShareConf;
 import es.upm.fiware.rss.model.SetRevenueShareConfId;
+import java.util.Optional;
 
 public interface SetRevenueShareConfDao extends GenericDao<SetRevenueShareConf, SetRevenueShareConfId> {
 
@@ -40,7 +41,10 @@ public interface SetRevenueShareConfDao extends GenericDao<SetRevenueShareConf, 
      * @param productClass
      * @return
      */
-    List<SetRevenueShareConf> getRevenueModelsByParameters(String aggregatorId, String appProviderId,
+    Optional<List<SetRevenueShareConf>> getRevenueModelsByParameters(String aggregatorId, String appProviderId,
         String productClass);
+
+    Optional<List<SetRevenueShareConf>> getPagedRevenueModelsByParameters(String aggregatorId, String appProviderId,
+        String productClass, int offset, int size);
 
 }

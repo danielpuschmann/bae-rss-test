@@ -20,6 +20,7 @@ import es.upm.fiware.rss.controller.JsonResponse;
 import es.upm.fiware.rss.exception.RSSException;
 import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.RSSReport;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.SettlementJob;
 import es.upm.fiware.rss.service.SettlementManager;
 import es.upm.fiware.rss.service.UserManager;
@@ -125,20 +126,28 @@ public class SettlementService {
             @QueryParam("aggregatorId") String aggregatorId,
             @QueryParam("providerId") String providerId,
             @QueryParam("productClass") String productClass,
+            @QueryParam("action") String action,
             @DefaultValue("false") @QueryParam("onlyPaid") boolean onlyPaid,
             @DefaultValue("0") @QueryParam("offset") int offset,
             @DefaultValue("-1") @QueryParam("size") int size)
             throws Exception {
 
+        Object resp;
+
         // Check basic permissions
         Map<String, String> ids = this.userManager.getAllowedIds(
                 aggregatorId, providerId, "RS reports");
 
-        List<RSSReport> files = settlementManager.getSharingReports(
+        if (action != null && action.toLowerCase().equals("count")) {
+            resp = (Count) settlementManager.countSharingReports(
+                ids.get("aggregator"), ids.get("provider"), productClass, onlyPaid);
+        } else {
+            resp = (List<RSSReport>) settlementManager.getSharingReports(
                 ids.get("aggregator"), ids.get("provider"), productClass, onlyPaid, offset, size);
+        }
 
         Response.ResponseBuilder rb = Response.status(Response.Status.OK.getStatusCode());
-        rb.entity(files);
+        rb.entity(resp);
         return rb.build();
     }
 }
