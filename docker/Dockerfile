@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update
-RUN apt-get install -y python2.7 python-pip git maven mysql-client openjdk-8-jdk
+RUN apt-get install -y unzip wget python2.7 python-pip git maven mysql-client openjdk-8-jdk
 
 # Download and install glassfish
 RUN wget http://download.java.net/glassfish/4.1/release/glassfish-4.1.zip

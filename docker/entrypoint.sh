@@ -1,4 +1,6 @@
 #!/bin/bash
+
+export PATH=$PATH:/glassfish4/glassfish/bin
 asadmin start-domain
 
 python /entrypoint.py
