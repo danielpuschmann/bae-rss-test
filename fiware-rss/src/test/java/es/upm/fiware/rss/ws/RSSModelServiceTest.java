@@ -22,6 +22,7 @@
 package es.upm.fiware.rss.ws;
 
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.model.Count;
 import javax.ws.rs.core.Response;
 
 import org.junit.Assert;
@@ -72,11 +73,22 @@ public class RSSModelServiceTest {
     public void getRSSModels () throws Exception {
         List<RSSModel> rssModels = new LinkedList<>();
         when(rssModelsManager.getRssModels(
-                this.aggregator, this.provider, this.productClass)).thenReturn(rssModels);
+                this.aggregator, this.provider, this.productClass, 0, -1)).thenReturn(rssModels);
 
-        Response response = toTest.getRssModels(null, productClass, null);
+        Response response = toTest.getRssModels(null, productClass, null, null, 0, -1);
         Assert.assertEquals(200, response.getStatus());
         Assert.assertEquals(rssModels, response.getEntity());
+    }
+
+    @Test
+    public void countRSSModels () throws Exception {
+        Count count = new Count();
+        when(rssModelsManager.countRssModels(
+                this.aggregator, this.provider, this.productClass)).thenReturn(count);
+
+        Response response = toTest.getRssModels(null, productClass, null, "count", 0, -1);
+        Assert.assertEquals(200, response.getStatus());
+        Assert.assertEquals(count, response.getEntity());
     }
 
     @Test

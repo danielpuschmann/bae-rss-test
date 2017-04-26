@@ -21,7 +21,6 @@
 
 package es.upm.fiware.rss.service;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import es.upm.fiware.rss.dao.CurrencyDao;
@@ -29,16 +28,27 @@ import es.upm.fiware.rss.dao.DbeAggregatorDao;
 import es.upm.fiware.rss.dao.DbeAppProviderDao;
 import es.upm.fiware.rss.dao.DbeTransactionDao;
 import es.upm.fiware.rss.exception.RSSException;
+import es.upm.fiware.rss.exception.UNICAExceptionType;
 import es.upm.fiware.rss.model.BmCurrency;
 import es.upm.fiware.rss.model.CDR;
+import es.upm.fiware.rss.model.Count;
 import es.upm.fiware.rss.model.DbeAggregator;
 import es.upm.fiware.rss.model.DbeAppProvider;
+import es.upm.fiware.rss.model.DbeAppProviderId;
+import es.upm.fiware.rss.model.DbeTransaction;
+import es.upm.fiware.rss.model.ProductClasses;
 import es.upm.fiware.rss.model.RSUser;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
+import org.junit.Assert;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.*;
@@ -60,6 +70,12 @@ public class CdrsManagerTest {
     @Mock DbeTransactionDao transactionDao;
     @InjectMocks private CdrsManager cdrsManager;
 
+    private RSUser user;
+    private String aggregatorId;
+    private String providerId;
+    private String currency;
+    private Integer correlation;
+
     /**
      * Method to insert data before test.
      *
@@ -69,437 +85,371 @@ public class CdrsManagerTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        this.user = new RSUser();
+        this.user.setEmail("user@mail.com");
+        
+        this.aggregatorId = "mail@mail.com";
+        this.providerId = "appProvider1";
+        this.currency = "EUR";
+        this.correlation = 10;
     }
 
-    /**
-     * @throws Exception
-     */
-    @After
-    public void tearDown() throws Exception {
+    private CDR buildTestCDR() {
+        CDR cdr = new CDR();
+        cdr.setAppProvider(this.providerId);
+        cdr.setApplication("application1");
+        cdr.setCdrSource(this.aggregatorId);
+        cdr.setChargedAmount(BigDecimal.ZERO);
+        cdr.setChargedTaxAmount(BigDecimal.TEN);
+        cdr.setCorrelationNumber(this.correlation);
+        cdr.setCurrency(this.currency);
+        cdr.setCustomerId("customerId1");
+        cdr.setDescription("description1");
+        cdr.setEvent("event1");
+        cdr.setProductClass("productClass1");
+        cdr.setReferenceCode("referenceCode1");
+        cdr.setTimestamp(new Date());
+        cdr.setTransactionType("C");
 
+        return cdr;
     }
 
+    private void mockUser() throws RSSException{
+        when(userManagerMock.isAdmin()).thenReturn(true);
+        when(userManagerMock.getCurrentUser()).thenReturn(this.user);
+    }
+
+    private DbeAggregator mockAggregator() {
+        DbeAggregator aggregator = new DbeAggregator("name", this.aggregatorId);
+        when(dbeAggregatorDaoMock.getById(this.aggregatorId))
+                .thenReturn(aggregator);
+        
+        return aggregator;
+    }
+
+    private DbeAppProvider mockProvider() {
+        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
+        when(dbeAppProviderMock.getProvider(this.aggregatorId, this.providerId)).thenReturn(dbeAppProvider);
+        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(this.correlation);
+
+        return dbeAppProvider;
+    }
+
+    private BmCurrency mockCurrency() {
+        BmCurrency currencyObj = new BmCurrency();
+        when(currencyDao.getByIso4217StringCode(this.currency)).thenReturn(currencyObj);
+        return currencyObj;
+    }
     @Test
-    public void createCDRsRSS() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void shouldCreateATransaction() throws RSSException {
+
+        this.mockUser();
+        DbeAggregator aggregator = this.mockAggregator();
+        DbeAppProvider dbeAppProvider = this.mockProvider();
+        BmCurrency currencyObj = this.mockCurrency();
 
         Date preDate = new Date();
-
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
-
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(new DbeAggregator("name", "mail@mail.com"));
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
-
         when(dbeAppProvider.getTxTimeStamp()).thenReturn(preDate);
 
+        List <CDR> cdrs = new LinkedList<>();
+        CDR cdr = this.buildTestCDR();
+        cdrs.add(cdr);
+
         cdrsManager.createCDRs(cdrs);
+        ArgumentCaptor<DbeTransaction> captor = ArgumentCaptor
+                .forClass(DbeTransaction.class);
+
+        verify(this.transactionDao).create(captor.capture());
+        DbeTransaction result = captor.getValue();
+
+        Assert.assertEquals(cdr.getProductClass(), result.getTxProductClass());
+        Assert.assertEquals("pending", result.getState());
+        Assert.assertEquals(aggregator, result.getCdrSource());
+        Assert.assertEquals(cdr.getCorrelationNumber(), result.getTxPbCorrelationId());
+        Assert.assertEquals(cdr.getTimestamp(), result.getTsClientDate());
+        Assert.assertEquals(cdr.getApplication(), result.getTxApplicationId());
+        Assert.assertEquals(cdr.getTransactionType(), result.getTcTransactionType());
+        Assert.assertEquals(cdr.getEvent(), result.getTxEvent());
+        Assert.assertEquals(cdr.getReferenceCode(), result.getTxReferenceCode());
+        Assert.assertEquals(cdr.getDescription(), result.getTxOperationNature());
+        Assert.assertEquals(cdr.getChargedAmount(), result.getFtChargedAmount());
+        Assert.assertEquals(cdr.getChargedTaxAmount(), result.getFtChargedTaxAmount());
+        Assert.assertEquals(currencyObj, result.getBmCurrency());
+        Assert.assertEquals(cdr.getCustomerId(), result.getTxEndUserId());
+        Assert.assertEquals(dbeAppProvider, result.getAppProvider());
+    }
+
+    private void testErrorCreation(
+            List <CDR> cdrs, UNICAExceptionType type, String msg) {
+
+        try {
+            cdrsManager.createCDRs(cdrs);
+            Assert.fail();
+        } catch (RSSException e) {
+            Assert.assertEquals(type, e.getExceptionType());
+            Assert.assertEquals(msg, e.getMessage());
+        }
+    }
+    @Test
+    public void throwsRSSExceptionWhenNoPermissions() throws RSSException {
+        List <CDR> cdrs = new LinkedList<>();
+        cdrs.add(this.buildTestCDR());
+
+        when(userManagerMock.isAdmin()).thenReturn(false);
+        this.user.setEmail("new@email.com");
+        when(userManagerMock.getCurrentUser()).thenReturn(this.user);
+
+        String msg = "Operation is not allowed: You are not allowed to register a transaction for the Store owned by " + this.aggregatorId;
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.NON_ALLOWED_OPERATION, msg);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionNotAllowed2Test() throws RSSException {
+    public void throwsRSSExceptionInvalidAggregator() throws RSSException {
         List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mails.com");
+        cdrs.add(this.buildTestCDR());
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+        this.mockUser();
 
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-
-        cdrsManager.createCDRs(cdrs);
+        String msg = "Resource Aggregator (" + this.aggregatorId + ") does not exist";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, msg);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionNonExistentResourceTest() throws RSSException {
+    public void throwsRSSEceptionInvalidCurrency() throws RSSException {
         List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+        cdrs.add(this.buildTestCDR());
+
+        this.mockUser();
+        this.mockAggregator();
+        this.mockProvider();
+
+        String msg = "Resource currency (" + this.currency + ") does not exist";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.NON_EXISTENT_RESOURCE_ID, msg);
+    }
+
+    @Test
+    public void throwsRSSExceptionInvalidCorrelation() throws RSSException {
+        List <CDR> cdrs = new LinkedList<>();
+        cdrs.add(this.buildTestCDR());
+
+        this.mockUser();
+        this.mockAggregator();
+        DbeAppProvider appProvider = this.mockProvider();
+        when(appProvider.getTxCorrelationNumber()).thenReturn(11);
+
+        this.mockCurrency();
+
+        String msg = "Invalid parameter: Invalid correlation number, expected 11";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.INVALID_PARAMETER, msg);
+    }
+
+    @Test
+    public void throwsRSSExceptionInvalidTimeStamp() throws RSSException {
+        List <CDR> cdrs = new LinkedList<>();
+        cdrs.add(this.buildTestCDR());
+
+        this.mockUser();
+        this.mockAggregator();
+        DbeAppProvider appProvider = this.mockProvider();
 
         Date preDate = new Date();
+        GregorianCalendar cal = new GregorianCalendar();
+        cal.setTime(preDate);
+        cal.add(Calendar.DATE, 10);
+        preDate = cal.getTime();
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+        when(appProvider.getTxTimeStamp()).thenReturn(preDate);
 
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        cdrsManager.createCDRs(cdrs);
+        this.mockCurrency();
+        String msg = "Invalid parameter: Invalid timestamp, the given time is earlier that the prevoius one";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.INVALID_PARAMETER, msg);
     }
 
-    @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionNonExistentResource2Test() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    private List <CDR> mockCDRCreationCalls() throws RSSException{
+        this.mockUser();
+        this.mockAggregator();
+        DbeAppProvider appProvider = this.mockProvider();
 
         Date preDate = new Date();
+        when(appProvider.getTxTimeStamp()).thenReturn(preDate);
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+        this.mockCurrency();
 
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(null);
-
-        cdrsManager.createCDRs(cdrs);
-    }
-
-    @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionNonInvalidParameterTest() throws RSSException {
         List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+        cdrs.add(this.buildTestCDR());
+        
+        return cdrs;
+    }
+    
+    @Test
+    public void throwsRSSExceptionInvalidTxType() throws RSSException {
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+        List <CDR> cdrs = this.mockCDRCreationCalls();
+        cdrs.get(0).setTransactionType("O");
 
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(500);
-
-        cdrsManager.createCDRs(cdrs);
+        String msg = "Invalid parameter: The transaction type O is not supported, must be C (charge) or R (refund)";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.INVALID_PARAMETER, msg);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionNonInvalidParameter2Test() throws RSSException {
-                List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void throwsRSSExceptionMissingProductClass() throws RSSException {
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+        List <CDR> cdrs = this.mockCDRCreationCalls();
+        cdrs.get(0).setProductClass(null);
 
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
-
-        when(dbeAppProvider.getTxTimeStamp()).thenReturn(new Date());
-
-        cdrsManager.createCDRs(cdrs);
+        String msg = "Missing mandatory parameter: productClass";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.MISSING_MANDATORY_PARAMETER, msg);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionNonInvalidParameter3Test() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void throwsRSSExceptionMissingReferenceCode() throws RSSException {
 
-        Date preDate = new Date();
+        List <CDR> cdrs = this.mockCDRCreationCalls();
+        cdrs.get(0).setReferenceCode(null);
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass1");
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("A");
-
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
-
-        when(dbeAppProvider.getTxTimeStamp()).thenReturn(preDate);
-
-        cdrsManager.createCDRs(cdrs);
+        String msg = "Missing mandatory parameter: referenceCode";
+        this.testErrorCreation(
+                cdrs, UNICAExceptionType.MISSING_MANDATORY_PARAMETER, msg);
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionMissingMandatoryParameterTest() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void shouldReturnAListOfCDRsWhenExisting() throws RSSException {
+        List<DbeTransaction> txResp = new ArrayList<>();
+        DbeTransaction tx = new DbeTransaction();
 
-        Date preDate = new Date();
+        Date date = new Date();
+        DbeAppProvider appProvider = new DbeAppProvider();
+        DbeAppProviderId provId = new DbeAppProviderId();
+        provId.setTxAppProviderId(this.providerId);
+        appProvider.setId(provId);
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass(null);
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+        tx.setAppProvider(appProvider);
 
-        cdrs.add(cdr1);
+        DbeAggregator aggregator = new DbeAggregator();
+        aggregator.setTxEmail(this.aggregatorId);
+        tx.setCdrSource(aggregator);
 
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
+        BmCurrency curr = new BmCurrency();
+        curr.setTxIso4217Code(this.currency);
+        tx.setBmCurrency(curr);
 
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
+        tx.setTxApplicationId("application1");
+        tx.setTxEndUserId("customerId1");
+        tx.setTxOperationNature("description1");
+        tx.setTxEvent("Transaction test");
+        tx.setTxProductClass("productClass1");
+        tx.setTxReferenceCode("referenceCode1");
+        tx.setTsClientDate(date);
+        tx.setTcTransactionType("C");
+        tx.setFtChargedAmount(BigDecimal.ZERO);
+        tx.setFtChargedTaxAmount(BigDecimal.TEN);
+        tx.setTxPbCorrelationId(this.correlation);
+        tx.setState("pending");
 
-        when(dbeAppProvider.getTxTimeStamp()).thenReturn(preDate);
+        txResp.add(tx);
 
-        cdrsManager.createCDRs(cdrs);
+        when(this.transactionDao
+                .getPagedTransactions(aggregatorId, providerId, null, 0, -1))
+                .thenReturn(Optional.of(txResp));
+
+        List<CDR> result = cdrsManager.getCDRs(aggregatorId, providerId, 0, -1);
+
+        Assert.assertEquals(1, result.size());
+        CDR cdr = result.get(0);
+
+        Assert.assertEquals(tx.getTxProductClass(), cdr.getProductClass());
+        Assert.assertEquals(this.aggregatorId, cdr.getCdrSource());
+        Assert.assertEquals(tx.getTxPbCorrelationId(), cdr.getCorrelationNumber());
+        Assert.assertEquals(tx.getTsClientDate(), cdr.getTimestamp());
+        Assert.assertEquals(tx.getTxApplicationId(), cdr.getApplication());
+        Assert.assertEquals(tx.getTcTransactionType(), cdr.getTransactionType());
+        Assert.assertEquals(tx.getTxEvent(), cdr.getEvent());
+        Assert.assertEquals(tx.getTxReferenceCode(), cdr.getReferenceCode());
+        Assert.assertEquals(tx.getTxOperationNature(), cdr.getDescription());
+        Assert.assertEquals(tx.getFtChargedAmount(), cdr.getChargedAmount());
+        Assert.assertEquals(tx.getFtChargedTaxAmount(), cdr.getChargedTaxAmount());
+        Assert.assertEquals(this.currency, cdr.getCurrency());
+        Assert.assertEquals(tx.getTxEndUserId(), cdr.getCustomerId());
+        Assert.assertEquals(this.providerId, cdr.getAppProvider());
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionMissingMandatoryParameter2Test() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void shouldReturnEmptyListWhenNoTx() throws RSSException {
+        when(this.transactionDao
+                .getPagedTransactions(aggregatorId, providerId, null, 0, -1))
+                .thenReturn(Optional.empty());
 
-        Date preDate = new Date();
-
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass(new String());
-        cdr1.setReferenceCode("referenceCode1");
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
-
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
-
-        when(dbeAppProvider.getTxTimeStamp()).thenReturn(preDate);
-
-        cdrsManager.createCDRs(cdrs);
+        List<CDR> result = cdrsManager.getCDRs(aggregatorId, providerId, 0, -1);
+        Assert.assertTrue(result.isEmpty());
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionMissingMandatoryParameter3Test() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void shouldReturnCountWhenTxs() throws RSSException {
+        List<DbeTransaction> txResp = new ArrayList<>();
+        txResp.add(new DbeTransaction());
+        txResp.add(new DbeTransaction());
 
-        Date preDate = new Date();
+        when(this.transactionDao
+                .getTransactions(aggregatorId, providerId, null))
+                .thenReturn(Optional.of(txResp));
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass");
-        cdr1.setReferenceCode(null);
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
-
-        cdrs.add(cdr1);
-
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
-
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
-
-        when(dbeAppProvider.getTxTimeStamp()).thenReturn(preDate);
-
-        cdrsManager.createCDRs(cdrs);
+        Count result = this.cdrsManager.countCDRs(aggregatorId, providerId);
+        Assert.assertEquals(2, (long) result.getSize());
     }
 
     @Test
-    (expected = RSSException.class)
-    public void createCDRsRSSExceptionMissingMandatoryParameter4Test() throws RSSException {
-        List <CDR> cdrs = new LinkedList<>();
-        RSUser rSUser = new RSUser();
-        rSUser.setEmail("mail@mail.com");
+    public void shouldReturnZeroWhenNoTxs() throws RSSException {
+        when(this.transactionDao
+                .getTransactions(aggregatorId, providerId, null))
+                .thenReturn(Optional.empty());
 
-        Date preDate = new Date();
+        Count result = this.cdrsManager.countCDRs(aggregatorId, providerId);
+        Assert.assertEquals(0, (long) result.getSize());
+    }
 
-        CDR cdr1 = new CDR();
-        cdr1.setAppProvider("appProvider1");
-        cdr1.setApplication("application1");
-        cdr1.setCdrSource("mail@mail.com");
-        cdr1.setChargedAmount(BigDecimal.ZERO);
-        cdr1.setChargedTaxAmount(BigDecimal.TEN);
-        cdr1.setCorrelationNumber(Integer.MIN_VALUE);
-        cdr1.setCurrency("currency1");
-        cdr1.setCustomerId("customerId1");
-        cdr1.setDescription("description1");
-        cdr1.setEvent("event1");
-        cdr1.setProductClass("productClass");
-        cdr1.setReferenceCode(new String());
-        cdr1.setTimestamp(new Date());
-        cdr1.setTransactionType("C");
+    @Test
+    public void shouldReturnTheListtOfProductClasses() throws RSSException {
+        List<DbeTransaction> txResp = new ArrayList<>();
+        DbeTransaction tx1 = new DbeTransaction();
+        tx1.setTxProductClass("productClass1");
+        txResp.add(tx1);
 
-        cdrs.add(cdr1);
+        DbeTransaction tx2 = new DbeTransaction();
+        tx2.setTxProductClass("productClass2");
+        txResp.add(tx2);
 
-        when(userManagerMock.isAdmin()).thenReturn(true);
-        when(userManagerMock.getCurrentUser()).thenReturn(rSUser);
-        when(dbeAggregatorDaoMock.getById("mail@mail.com")).thenReturn(null);
+        DbeTransaction tx3 = new DbeTransaction();
+        tx3.setTxProductClass("productClass1");
+        txResp.add(tx3);
 
-        DbeAppProvider dbeAppProvider = mock(DbeAppProvider.class);
-        when(dbeAppProviderMock.getProvider("mail@mail.com", "appProvider1")).thenReturn(dbeAppProvider);
-        when(currencyDao.getByIso4217StringCode("currency1")).thenReturn(new BmCurrency());
-        when(dbeAppProvider.getTxCorrelationNumber()).thenReturn(cdr1.getCorrelationNumber());
+        when(this.transactionDao
+                .getTransactions(aggregatorId, providerId, null))
+                .thenReturn(Optional.of(txResp));
 
-        when(dbeAppProvider.getTxTimeStamp()).thenReturn(preDate);
+        ProductClasses result = this.cdrsManager.getCDRClasses(aggregatorId, providerId);
 
-        cdrsManager.createCDRs(cdrs);
+        Assert.assertEquals(2, result.getProductClasses().size());
+        Assert.assertTrue((result.getProductClasses().get(0).equals("productClass1")
+                && result.getProductClasses().get(1).equals("productClass2")) ||
+                (result.getProductClasses().get(0).equals("productClass2")
+                && result.getProductClasses().get(1).equals("productClass1")));
+    }
+
+    @Test
+    public void shouldReturnEmptyListProductClasses() throws RSSException {
+        when(this.transactionDao
+                .getTransactions(aggregatorId, providerId, null))
+                .thenReturn(Optional.empty());
+
+        ProductClasses result = this.cdrsManager.getCDRClasses(aggregatorId, providerId);
+        Assert.assertTrue(result.getProductClasses().isEmpty());
     }
 }

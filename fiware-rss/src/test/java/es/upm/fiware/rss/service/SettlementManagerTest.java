@@ -143,20 +143,21 @@ public class SettlementManagerTest {
         return mods;
     }
 
-    private List<DbeTransaction> buildTransactions() {
+    private Optional<List<DbeTransaction>> buildTransactions() {
         List <DbeTransaction> transactions = new LinkedList<>();
         DbeTransaction transaction = new DbeTransaction();
         transactions.add(transaction);
-        return transactions;
+
+        return Optional.of(transactions);
     }
 
     private ProductSettlementTask buildTask(RSSModel model) {
-        List<DbeTransaction> tx1 = this.buildTransactions();
+        Optional<List<DbeTransaction>> tx1 = this.buildTransactions();
         when(transactionDao.getTransactions(model.getAggregatorId(), model.getOwnerProviderId(), model.getProductClass()))
                 .thenReturn(tx1);
         
         ProductSettlementTask t1 = new ProductSettlementTask();
-        when(taskFactory.getSettlementTask(model, tx1, callbackUrl)).thenReturn(t1);
+        when(taskFactory.getSettlementTask(model, tx1.get(), callbackUrl)).thenReturn(t1);
         
         return t1;
     }
@@ -165,7 +166,7 @@ public class SettlementManagerTest {
         when(modelsManager.existModel(aggregatorId, providerId, productClass)).thenReturn(Boolean.TRUE);
         when(aggregatorManager.getAggregator(aggregatorId)).thenReturn(aggregator);
         when(providerManager.getProvider(aggregatorId, providerId)).thenReturn(rSSProvider);
-        when(modelsManager.getRssModels(aggregatorId, providerId, productClass)).thenReturn(models);
+        when(modelsManager.getRssModels(aggregatorId, providerId, productClass, 0, -1)).thenReturn(models);
     }
 
     @Test
@@ -174,14 +175,14 @@ public class SettlementManagerTest {
      * provider product class
      */
     public void testRunSettlementProviderTx() throws RSSException {
-        List <DbeTransaction> transactions = this.buildTransactions();
+        Optional<List <DbeTransaction>> transactions = this.buildTransactions();
 
         // Create Mocks
         this.mockSingleModel();
         when(transactionDao.getTransactions(aggregatorId, providerId, productClass)).thenReturn(transactions);
 
         ProductSettlementTask settlementTask = new ProductSettlementTask();
-        when(taskFactory.getSettlementTask(model, transactions, callbackUrl)).thenReturn(settlementTask);
+        when(taskFactory.getSettlementTask(model, transactions.get(), callbackUrl)).thenReturn(settlementTask);
 
         // Execute method
         toTest.runSettlement(job);
@@ -200,6 +201,7 @@ public class SettlementManagerTest {
     public void testRunSettlementProviderNoTransactions() throws RSSException {
         // Create Mocks
         this.mockSingleModel();
+        when(transactionDao.getTransactions(aggregatorId, providerId, productClass)).thenReturn(Optional.empty());
         
         // Execute Mwethod
         toTest.runSettlement(job);
@@ -210,7 +212,6 @@ public class SettlementManagerTest {
         verify(poolManager).closeTaskPool(callbackUrl);
     }
     
-
     /*
      * Verifies the run settlement process for all pending transactions
      */
@@ -238,10 +239,10 @@ public class SettlementManagerTest {
         List<RSSModel> models3 = this.buildModels("aggregator2@email.com", "provider3", "class5", "class6");
         List<RSSModel> models4 = this.buildModels("aggregator2@email.com", "provider4", "class7", "class8");
         
-        when(modelsManager.getRssModels("aggregator1@email.com", "provider1", null)).thenReturn(models1);
-        when(modelsManager.getRssModels("aggregator1@email.com", "provider2", null)).thenReturn(models2);
-        when(modelsManager.getRssModels("aggregator2@email.com", "provider3", null)).thenReturn(models3);
-        when(modelsManager.getRssModels("aggregator2@email.com", "provider4", null)).thenReturn(models4);
+        when(modelsManager.getRssModels("aggregator1@email.com", "provider1", null, 0, -1)).thenReturn(models1);
+        when(modelsManager.getRssModels("aggregator1@email.com", "provider2", null, 0, -1)).thenReturn(models2);
+        when(modelsManager.getRssModels("aggregator2@email.com", "provider3", null, 0, -1)).thenReturn(models3);
+        when(modelsManager.getRssModels("aggregator2@email.com", "provider4", null, 0, -1)).thenReturn(models4);
         
         // Mock Transactions
         List<ProductSettlementTask> tasks = new ArrayList<>();
@@ -258,9 +259,9 @@ public class SettlementManagerTest {
         toTest.runSettlement(job);
         
         // Validate calls
-        for (ProductSettlementTask task: tasks) {
+        tasks.stream().forEach((task) -> {
             verify(poolManager).submitTask(task, callbackUrl);
-        }
+        });
 
         verify(poolManager).closeTaskPool(callbackUrl);
     }
@@ -302,7 +303,7 @@ public class SettlementManagerTest {
     }
 
     @Test
-    public void testGetSharingReportsEmpty() {
+    public void shouldReturnAnEmptyListOfReports() {
         Optional<List<SharingReport>> sreports1 = Optional.empty();
         when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
                 .thenReturn(sreports1);
@@ -312,7 +313,8 @@ public class SettlementManagerTest {
         Assert.assertTrue((reports1.isEmpty()));
     }
 
-    @Test public void testGetReports() {
+    @Test
+    public void shouldReturnAListOfReports() {
         List<SharingReport> sharingReportList = generateReports(1, 1);
         Optional<List<SharingReport>> sharingReportListOpt = Optional.of(sharingReportList);
         when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
@@ -324,19 +326,31 @@ public class SettlementManagerTest {
         IntStream.range(0, 2).forEach(i -> {
             RSSReport rss = rssReportsList.get(i);
 
-            Assert.assertEquals(rss.getId(), i);
-            Assert.assertEquals(rss.getAggregatorId(), aggregatorId);
-            Assert.assertEquals(rss.getAggregatorValue(), new BigDecimal(0.3));
-            Assert.assertEquals(rss.getOwnerProviderId(), providerId);
-            Assert.assertEquals(rss.getOwnerValue(), new BigDecimal(0.7));
+            Assert.assertEquals(i, rss.getId());
+            Assert.assertEquals(aggregatorId, rss.getAggregatorId());
+            Assert.assertEquals(new BigDecimal(0.3), rss.getAggregatorValue());
+            Assert.assertEquals(providerId, rss.getOwnerProviderId());
+            Assert.assertEquals(new BigDecimal(0.7), rss.getOwnerValue());
 
-            Assert.assertEquals(rss.getAlgorithmType(), "FIXED_PERCENTAGE");
-            Assert.assertEquals(rss.getCurrency(), "EUR");
+            Assert.assertEquals("FIXED_PERCENTAGE", rss.getAlgorithmType());
+            Assert.assertEquals("EUR", rss.getCurrency());
 
-            Assert.assertEquals(rss.getProductClass(), productClass);
+            Assert.assertEquals(productClass, rss.getProductClass());
             Assert.assertTrue(rss.getTimestamp().before(new Date()));
-            Assert.assertEquals(rss.isPaid(), i < 1);
+            Assert.assertEquals(i < 1, rss.isPaid());
         });
+    }
+
+    @Test
+    public void shouldReturnAValidCount() {
+        List<SharingReport> sharingReportList = this.generateReports(2, 0);
+        Optional<List<SharingReport>> sharingReportListOpt = Optional.of(sharingReportList);
+
+        when(sharingReportDao.getSharingReportsByParameters(aggregatorId, providerId, productClass, false, 0, -1))
+                .thenReturn(sharingReportListOpt);
+
+        Count result = toTest.countSharingReports(aggregatorId, providerId, productClass, false);
+        Assert.assertEquals(2, (long) result.getSize());
     }
 
     @Test

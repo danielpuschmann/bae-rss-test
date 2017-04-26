@@ -1,4 +1,4 @@
-FROM glassfish:latest
+FROM ubuntu:16.04
 
 RUN apt-get update
 
@@ -15,15 +15,16 @@ WORKDIR business-ecosystem-rss
 
 RUN git checkout develop
 
-# Create WAR file
-
 RUN mvn install -DskipTests; \
     mkdir /etc/default/rss/;
 
+# Set properties files
 COPY database.properties /etc/default/rss/database.properties
 
 COPY oauth.properties /etc/default/rss/oauth.properties
 
 COPY ./entrypoint.py /
 COPY ./entrypoint.sh /
+
+EXPOSE 8080 4848 8181
 ENTRYPOINT ["/entrypoint.sh"]

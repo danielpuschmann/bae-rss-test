@@ -9,7 +9,7 @@ rss_db:
         - MYSQL_DATABASE=RSS
 
 rss:
-    image: biz-ecosystem-rss
+    image: conwetlab/biz-ecosystem-rss
     ports:
         - "9999:8080"
         - "4444:4848"
