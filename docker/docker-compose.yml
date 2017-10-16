@@ -1,22 +1,25 @@
-rss_db:
-    image: mysql:latest
-    ports:
-        - "3333:3306"
-    volumes:
-        - /var/lib/mysql
-    environment:
-        - MYSQL_ROOT_PASSWORD=my-secret-pw
-        - MYSQL_DATABASE=RSS
+version: '3'
 
-rss:
-    image: conwetlab/biz-ecosystem-rss
-    ports:
-        - "9999:8080"
-        - "4444:4848"
-        - "1111:8181"
-    links:
-        - rss_db
-    environment:
-        - MYSQL_DBUSR=root
-        - MYSQL_DBPASSWORD=my-secret-pw
-        - MYSQL_HOST=rss_db
+services:
+    rss_db:
+        image: mysql:latest
+        ports:
+            - "3333:3306"
+        volumes:
+            - ./rss-data:/var/lib/mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=my-secret-pw
+            - MYSQL_DATABASE=RSS
+
+    rss:
+        image: rss
+        ports:
+            - "9999:8080"
+            - "4444:4848"
+            - "1111:8181"
+        links:
+            - rss_db
+        depends_on:
+            - rss_db
+        volumes:
+            - ./rss-config:/etc/default/rss

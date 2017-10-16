@@ -13,30 +13,31 @@ The Business Ecosystem RSS itself does not need to know the credentials (Client 
 You can install the Business Ecosystem RSS automatically if you have `docker-compose` installed in your machine. To do so, you must create a folder to place a new file file called `docker-compose.yml` that should include the following content:
 
 ```
+version: '3'
 
-rss_db:
-    image: mysql:latest
-    ports:
-        - "3333:3306"
-    volumes:
-        - /var/lib/mysql
-    environment:
-        - MYSQL_ROOT_PASSWORD=my-secret-pw
-        - MYSQL_DATABASE=RSS
+services:
+    rss_db:
+        image: mysql:latest
+        ports:
+            - "3333:3306"
+        volumes:
+            - ./rss-data:/var/lib/mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=my-secret-pw
+            - MYSQL_DATABASE=RSS
 
-rss:
-    image: conwetlab/biz-ecosystem-rss
-    ports:
-        - "9999:8080"
-        - "4444:4848"
-        - "1111:8181"
-    links:
-        - rss_db
-    environment:
-        - MYSQL_DBUSR=root
-        - MYSQL_DBPASSWORD=my-secret-pw
-        - MYSQL_HOST=rss_db
-
+    rss:
+        image: conwetlab/biz-ecosystem-rss
+        ports:
+            - "9999:8080"
+            - "4444:4848"
+            - "1111:8181"
+        links:
+            - rss_db
+        depends_on:
+            - rss_db
+        volumes:
+            - ./rss-config:/etc/default/rss
 ```
 
 **Note**: The provided docker-compose file is using a port schema that can be easily changed modifying the file
@@ -49,6 +50,26 @@ docker-compose up
 
 Then, the Business Ecosystem RSS should be up and running in `http://YOUR_HOST:PORT/DSRevenueSharing` replacing `YOUR_HOST` by the host of your machine and `PORT` by the port selected in the previous step. 
 
+Once the different containers are running, you can stop them using:
+
+```
+docker-compose stop
+```
+
+And start them again using:
+
+```
+docker-compose start
+```
+
+Additionally, you can terminate the different containers by executing:
+
+```
+docker-compose down
+```
+
+**Note**: The provided docker compose requires a volume rss-config which must include the configuration files of the RSS. If this files are not included you will see an error when running the container
+
 ## Manually
 
 ### 1) Creating a Container to host the Database
@@ -56,7 +77,7 @@ Then, the Business Ecosystem RSS should be up and running in `http://YOUR_HOST:P
 The first thing that you have to do is to create a docker container that will host the database used by the Business Ecosystem RSS. To do so, you can execute the following command:
 
 ```
-docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=rss -p PORT:8080 -v /var/lib/mysql -d mysql
+docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=rss -p PORT:8080 -v ./rss-data:/var/lib/mysql -d mysql
 ```
 
 ### 2) Deploying the Business Ecosystem RSS Image
@@ -64,8 +85,10 @@ docker run --name rss_db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=r
 Once that the database is configured, you can deploy the image by running the following command:
 
 ```
-docker run -e MYSQL_DBUSR=root -e MYSQL_DBPASSWORD=my-secret-pw -e MYSQL_HOST=rss_db -p PORT:8080 --link rss_db conwetlab/biz-ecosystem-rss
+docker run -p PORT:8080 -v ./rss-config:/etc/default/rss --link rss_db conwetlab/biz-ecosystem-rss
 ```
+**Note**: The provided docker image requires a volume rss-config which must include the configuration files of the RSS. If this files are not included you will see an error when running the container
+
 **Note**: You can change the values of the MySQL connection (database password, and database host), but they must be same as the used when running the MySQL container. 
 
 Once that you have run these commands, the RSS should be up and running in `http://YOUR_HOST:PORT/fiware-rss` replacing `YOUR_HOST` by the host of your machine and `PORT` by the port selected in the previous step. 
