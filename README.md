@@ -1,6 +1,6 @@
 # Business Ecosystem RSS
 
-[![License](https://img.shields.io/badge/license-AGPL%203.0-blue.svg?style=flat)](https://opensource.org/licenses/AGPL-3.0) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://business-api-ecosystem.readthedocs.io/en/latest/) [![Docker](https://img.shields.io/docker/pulls/conwetlab/biz-ecosystem-rss.svg)](https://hub.docker.com/r/conwetlab/biz-ecosystem-rss) [![Support](https://img.shields.io/badge/support-askbot-yellowgreen.svg)](https://ask.fiware.org) [![Build Status](https://build.conwet.fi.upm.es/jenkins/buildStatus/icon?job=BusinessEcosystemRSS)](https://build.conwet.fi.upm.es/jenkins/job/BusinessEcosystemRSS/)
+[![License](https://img.shields.io/badge/license-AGPL%203.0-blue.svg?style=flat)](https://opensource.org/licenses/AGPL-3.0) [![Docs](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://bae-test.readthedocs.io/en/latest/) [![Docker](https://img.shields.io/docker/pulls/conwetlab/biz-ecosystem-rss.svg)](https://hub.docker.com/r/conwetlab/biz-ecosystem-rss) [![Support](https://img.shields.io/badge/support-askbot-yellowgreen.svg)](https://ask.fiware.org) [![Build Status](https://build.conwet.fi.upm.es/jenkins/buildStatus/icon?job=BusinessEcosystemRSS)](https://build.conwet.fi.upm.es/jenkins/job/BusinessEcosystemRSS/)
 
  * [Introduction](#introduction)
  * [GEi Overall Description](#gei-overall-description)
@@ -11,9 +11,9 @@
 
 # Introduction
 
-This is the code repository for the Business Ecosystem RSS, one of the components that made up the [Business API Ecosystem GE](https://github.com/FIWARE-TMForum/Business-API-Ecosystem). The Business API Ecosystem is part of [FIWARE](https://www.fiware.org), and has been developed in collaboration with the [TM Forum](https://www.tmforum.org/).
+This is the code repository for the Business Ecosystem RSS, one of the components that made up the [Business API Ecosystem GE](https://github.com/FIWARE-TMForum/bae-test). The Business API Ecosystem is part of [FIWARE](https://www.fiware.org), and has been developed in collaboration with the [TM Forum](https://www.tmforum.org/).
 
-Any feedback is highly welcome, including bugs, typos or things you think should be included but aren't. You can use [GitHub Issues](https://github.com/FIWARE-TMForum/business-ecosystem-rss/issues/new) to provide feedback.
+Any feedback is highly welcome, including bugs, typos or things you think should be included but aren't. You can use [GitHub Issues](https://github.com/FIWARE-TMForum/bae-rss-test/issues/new) to provide feedback.
 
 # GEi Overal Description
 
@@ -23,7 +23,7 @@ In this context, the Business Ecosystem RSS is in charge of distributing the rev
 
 # Installation
 
-The Business Ecosystem RSS is installed as part of the Business API Ecosystem, so the instructions to install it can be found at [the Business API Ecosystem Installation Guide](http://business-api-ecosystem.readthedocs.io/en/latest/installation-administration-guide.html). You can install the software in three different ways:
+The Business Ecosystem RSS is installed as part of the Business API Ecosystem, so the instructions to install it can be found at [the Business API Ecosystem Installation Guide](http://bae-test.readthedocs.io/en/latest/installation-administration-guide.html). You can install the software in three different ways:
 
 * Using the provided script
 * Using a [Docker Container](https://hub.docker.com/r/conwetlab/biz-ecosystem-rss/)
@@ -34,7 +34,7 @@ The Business Ecosystem RSS is installed as part of the Business API Ecosystem, s
 For further documentation, you can check the API Reference available at:
 
 * [Apiary](http://docs.fiwaretmfbizecosystem.apiary.io)
-* [GitHub Pages](https://fiware-tmforum.github.io/Business-API-Ecosystem/)
+* [GitHub Pages](https://fiware-tmforum.github.io/bae-test/)
 
 # Testing
 
@@ -46,8 +46,8 @@ mvn test -fae
 
 ## Advanced Topics
 
-* [User & Programmers Guide](https://github.com/FIWARE-TMForum/Business-API-Ecosystem/blob/master/doc/user-programmer-guide.rst)
-* [Installation & Administration Guide](https://github.com/FIWARE-TMForum/Business-API-Ecosystem/blob/master/doc/installation-administration-guide.rst)
+* [User & Programmers Guide](https://github.com/FIWARE-TMForum/bae-test/blob/master/doc/user-programmer-guide.rst)
+* [Installation & Administration Guide](https://github.com/FIWARE-TMForum/bae-test/blob/master/doc/installation-administration-guide.rst)
 
-You can also find this documentation on [ReadTheDocs](http://business-api-ecosystem.readthedocs.io)
+You can also find this documentation on [ReadTheDocs](http://bae-test.readthedocs.io)
 

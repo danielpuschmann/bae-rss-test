@@ -5,7 +5,7 @@
     <groupId>es.upm.fiware</groupId>
     <artifactId>rss</artifactId>
     <packaging>pom</packaging>
-    <name>Business-Ecosystem-RSS</name>
+    <name>bae-rss-test</name>
     <version>5.4.1</version>
     <description></description>
 

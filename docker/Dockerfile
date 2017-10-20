@@ -17,9 +17,9 @@ RUN cp ./mysql-connector-java-5.1.39/mysql-connector-java-5.1.39-bin.jar glassfi
 RUN pip install sh
 
 # Download RSS Code
-RUN git clone https://github.com/FIWARE-TMForum/business-ecosystem-rss.git
+RUN git clone https://github.com/danielpuschmann/bae-rss-test.git
 
-WORKDIR business-ecosystem-rss
+WORKDIR bae-rss-test
 
 RUN git checkout develop
 
